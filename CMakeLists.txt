@@ -4,7 +4,10 @@ project(optical_flow_prototype C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-include_directories(include)
+include_directories(
+    include
+    third_party
+)
 
 add_executable(bench_main
     src/main.c
@@ -14,3 +17,11 @@ add_executable(bench_main
     src/lk_neon.c
     src/metrics.c
 )
+
+if(NOT MSVC)
+    target_link_libraries(
+        bench_main
+        PRIVATE
+        m
+    )
+endif()
