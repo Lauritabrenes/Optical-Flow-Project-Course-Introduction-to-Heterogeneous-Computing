@@ -25,3 +25,16 @@ if(NOT MSVC)
         m
     )
 endif()
+
+add_executable(test_io
+    tests/test_io.c
+    src/io.c
+)
+
+if(NOT MSVC)
+    target_link_libraries(
+        test_io
+        PRIVATE
+        m
+    )
+endif()
