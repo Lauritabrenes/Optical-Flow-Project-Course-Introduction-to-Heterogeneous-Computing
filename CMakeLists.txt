@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.16)
 project(optical_flow_prototype C)
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Tipo de build" FORCE)
+endif()
+
+# Agregar después de la línea 6 en CMakeLists.txt
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm")
+    add_compile_options(-O3 -march=armv8-a+simd)
+    add_definitions(-DHAVE_NEON)
+endif()
+
+add_executable(test_metrics tests/test_metrics.c src/metrics.c)
+if(NOT MSVC)
+    target_link_libraries(test_metrics PRIVATE m)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 

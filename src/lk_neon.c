@@ -1,14 +1,12 @@
 /*
- * ============================================================================
- *  lk_neon.c — Stage 3 Vectorized Lucas-Kanade with ARM NEON (Persona 3)
- * ============================================================================
+ *  lk_neon.c — Stage 3 Vectorized Lucas-Kanade with ARM NEON
  */
 
 #include "of.h"
 #include <stdlib.h>
 #include <math.h>
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(HAVE_NEON)
 #include <arm_neon.h>
 #endif
 
