@@ -1,214 +1,161 @@
 /*
- * ============================================================================
- *  src/main.c
- * ----------------------------------------------------------------------------
- *  Punto de entrada del benchmark de Optical Flow.
+ * main.c - Punto de entrada del prototipo (bench_main)
  *
- *  Ejecuta el pipeline completo de 4 etapas:
- *      [1] IO          -> carga de dos frames desde disco
- *      [2] PREPROCESS  -> normalizacion + desenfoque gaussiano
- *      [3] LK_SCALAR   -> Lucas-Kanade piramidal (o LK_NEON en ARM)
- *      [4] SAVE        -> persistencia de resultados en CSV
- *      TOTAL           -> tiempo total del pipeline
+ * Pipeline: carga (io.c) -> preprocesamiento (preprocess.c)
+ *           -> Lucas-Kanade escalar (lk_scalar.c) -> resultados (metrics.c)
  *
- *  Imprime los tiempos por etapa con un formato que scripts/profile.sh
- *  puede parsear sin ambiguedad:
- *      [1] IO          <tiempo> ms
- *      [2] PREPROCESS  <tiempo> ms
- *      [3] LK_SCALAR   <tiempo> ms
- *      [4] SAVE        <tiempo> ms
- *      TOTAL           <tiempo> ms
+ * Uso: ./build/bench_main <frame1> <frame2> [salida]
  *
- *  IMPORTANTE: NO imprimir lineas adicionales que contengan la palabra
- *  "TOTAL" o "[N]" para evitar que el grep del script de perfilado las
- *  capture por error. En particular, evitar mensajes del tipo
- *  "Pipeline TOTAL ejecutado en X ms".
- *
- *  Uso:
- *      ./bench_main <frame1> <frame2>
- *
- *  Autor: Grupo 3
- *  Curso: EL5859 Computacion Heterogenea (TEC)
- * ============================================================================
+ * Responsabilidad de memoria (contrato del equipo):
+ *   - of_load_frame reserva raw.data; el llamador la libera con free().
+ *   - of_preprocess y of_lk_scalar NO reservan los buffers de salida;
+ *     el llamador (aqui) los reserva y los libera.
  */
 
+#define _POSIX_C_SOURCE 199309L
+
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
 #include "of.h"
 
-/* Codigo de retorno que indica exito en las funciones del modulo of */
-#define OF_OK 0
+/* Resolucion de trabajo acordada por el equipo. Si los frames difieren
+ * solo se advierte; no se detiene la ejecucion. */
+#define EXPECTED_WIDTH  1280
+#define EXPECTED_HEIGHT 720
 
-/* ============================================================================
- *  Utilidad de medicion de tiempo
- * ============================================================================
- */
-
-/*
- * now_ms
- * ------
- * Devuelve el tiempo actual del reloj monotónico del sistema en milisegundos.
- *
- * Usa CLOCK_MONOTONIC porque no se ve afectado por ajustes del reloj del
- * sistema (NTP, cambios manuales), lo que lo hace ideal para medir duraciones.
- *
- * Retorna: marca de tiempo en milisegundos como double.
- */
 static double now_ms(void)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
 }
 
-/* ============================================================================
- *  Punto de entrada
- * ============================================================================
- */
+/* Reserva un OFImage con las mismas dimensiones que 'src'. */
+static int alloc_like(OFImage *dst, const OFImage *src)
+{
+    dst->width  = src->width;
+    dst->height = src->height;
+    dst->data   = (float *)malloc((size_t)src->width * (size_t)src->height
+                                  * sizeof(float));
+    return dst->data ? 0 : -1;
+}
+
+/* Resumen rapido del flujo para comprobar que el resultado es razonable. */
+static void print_flow_stats(const OFFlow *f)
+{
+    const size_t n = (size_t)f->width * (size_t)f->height;
+    size_t nonzero = 0;
+    double sum_u = 0.0, sum_v = 0.0, max_sq = 0.0;
+
+    for (size_t i = 0; i < n; i++) {
+        const double u = f->u[i];
+        const double v = f->v[i];
+        sum_u += u;
+        sum_v += v;
+        if (u != 0.0 || v != 0.0) nonzero++;
+        if (u * u + v * v > max_sq) max_sq = u * u + v * v;
+    }
+
+    printf("Flujo: pixeles con solucion = %zu de %zu (%.1f %%)\n",
+           nonzero, n, 100.0 * (double)nonzero / (double)n);
+    printf("Flujo: promedio (u, v) = (%.4f, %.4f), magnitud maxima = %.4f px\n",
+           sum_u / (double)n, sum_v / (double)n, sqrt(max_sq));
+}
 
 int main(int argc, char **argv)
 {
-    /* --- 0. Validacion de argumentos --- */
     if (argc < 3) {
-        fprintf(stderr, "Uso: %s <frame1> <frame2>\n", argv[0]);
+        fprintf(stderr, "Uso: %s <frame1> <frame2> [salida]\n", argv[0]);
         return 1;
     }
 
-    /* --- Estructuras de datos --- */
-    OFImage f1 = {0}, f2 = {0};     /* Frames originales (gris, [0,255])    */
-    OFImage p1 = {0}, p2 = {0};     /* Frames preprocesados (gris, [0,1])   */
-    OFFlow  flow = {0};             /* Flujo optico resultante              */
+    const char *path1    = argv[1];
+    const char *path2    = argv[2];
+    const char *out_path = (argc > 3) ? argv[3] : "results/output";
 
-    /* Variables de tiempo por etapa */
-    double t_start, t_after_io, t_after_pre, t_after_lk, t_after_save;
+    OFImage raw1 = {0}, raw2 = {0};   /* etapa 1: float [0,255]          */
+    OFImage pp1  = {0}, pp2  = {0};   /* etapa 2: float [0,1], suavizado */
+    OFFlow  flow = {0};               /* etapa 3: campo (u, v)           */
+    int status = 1;
+    int rc;
+    double t0, t_load, t_pre, t_lk;
 
-    /* ========================================================================
-     *  Inicio de la medicion total
-     * ======================================================================== */
-    t_start = now_ms();
-
-    /* ========================================================================
-     *  ETAPA 1 — IO: carga de frames
-     * ======================================================================== */
-    if (of_load_frame(argv[1], &f1) != OF_OK) {
-        fprintf(stderr, "ERROR: fallo al cargar frame1 (%s)\n", argv[1]);
-        return 1;
+    /* Etapa 1: inicializacion y carga */
+    t0 = now_ms();
+    if (of_load_frame(path1, &raw1) != 0) {
+        fprintf(stderr, "Error: no se pudo cargar '%s'\n", path1);
+        goto cleanup;
     }
-    if (of_load_frame(argv[2], &f2) != OF_OK) {
-        fprintf(stderr, "ERROR: fallo al cargar frame2 (%s)\n", argv[2]);
-        free(f1.data);
-        return 1;
+    if (of_load_frame(path2, &raw2) != 0) {
+        fprintf(stderr, "Error: no se pudo cargar '%s'\n", path2);
+        goto cleanup;
     }
+    t_load = now_ms() - t0;
 
-    t_after_io = now_ms();
-
-    /* ========================================================================
-     *  ETAPA 2 — PREPROCESS: normalizacion + Gaussiano
-     * ======================================================================== */
-
-    /* Reserva memoria para los frames preprocesados (responsabilidad del
-     * llamador, segun el contrato definido en docs/decisions.md). */
-    p1.width  = f1.width;
-    p1.height = f1.height;
-    p1.data   = (float *)malloc((size_t)p1.width * p1.height * sizeof(float));
-
-    p2.width  = f2.width;
-    p2.height = f2.height;
-    p2.data   = (float *)malloc((size_t)p2.width * p2.height * sizeof(float));
-
-    if (!p1.data || !p2.data) {
-        fprintf(stderr, "ERROR: fallo al reservar memoria para preprocesamiento\n");
-        free(f1.data); free(f2.data);
-        free(p1.data); free(p2.data);
-        return 1;
+    if (raw1.width != raw2.width || raw1.height != raw2.height) {
+        fprintf(stderr, "Error: los frames tienen dimensiones distintas "
+                        "(%dx%d vs %dx%d)\n",
+                raw1.width, raw1.height, raw2.width, raw2.height);
+        goto cleanup;
+    }
+    if (raw1.width != EXPECTED_WIDTH || raw1.height != EXPECTED_HEIGHT) {
+        fprintf(stderr, "Aviso: resolucion %dx%d (se esperaba %dx%d)\n",
+                raw1.width, raw1.height, EXPECTED_WIDTH, EXPECTED_HEIGHT);
     }
 
-    if (of_preprocess(&f1, &p1) != OF_OK) {
-        fprintf(stderr, "ERROR: fallo en preprocesamiento de frame1\n");
-        free(f1.data); free(f2.data);
-        free(p1.data); free(p2.data);
-        return 1;
+    /* Buffers de las etapas siguientes (el llamador los reserva) */
+    if (alloc_like(&pp1, &raw1) != 0 || alloc_like(&pp2, &raw2) != 0) {
+        fprintf(stderr, "Error: sin memoria para los buffers preprocesados\n");
+        goto cleanup;
     }
-    if (of_preprocess(&f2, &p2) != OF_OK) {
-        fprintf(stderr, "ERROR: fallo en preprocesamiento de frame2\n");
-        free(f1.data); free(f2.data);
-        free(p1.data); free(p2.data);
-        return 1;
-    }
-
-    t_after_pre = now_ms();
-
-    /* ========================================================================
-     *  ETAPA 3 — LK: Lucas-Kanade piramidal
-     * ======================================================================== */
-
-    /* Dimensiona el flujo de salida igual que el frame preprocesado */
-    flow.width  = p1.width;
-    flow.height = p1.height;
-    const size_t n = (size_t)flow.width * flow.height;
-
-    /* calloc: inicializa a cero (util si LK no cubre todos los pixeles) */
-    flow.u = (float *)calloc(n, sizeof(float));
-    flow.v = (float *)calloc(n, sizeof(float));
-
+    flow.width  = raw1.width;
+    flow.height = raw1.height;
+    flow.u = (float *)malloc((size_t)flow.width * (size_t)flow.height * sizeof(float));
+    flow.v = (float *)malloc((size_t)flow.width * (size_t)flow.height * sizeof(float));
     if (!flow.u || !flow.v) {
-        fprintf(stderr, "ERROR: fallo al reservar memoria para el flujo optico\n");
-        free(f1.data); free(f2.data);
-        free(p1.data); free(p2.data);
-        free(flow.u);  free(flow.v);
-        return 1;
+        fprintf(stderr, "Error: sin memoria para el campo de flujo\n");
+        goto cleanup;
     }
 
-    if (of_lk_scalar(&p1, &p2, &flow) != OF_OK) {
-        fprintf(stderr, "ERROR: fallo en Lucas-Kanade escalar\n");
-        free(f1.data); free(f2.data);
-        free(p1.data); free(p2.data);
-        free(flow.u);  free(flow.v);
-        return 1;
+    /* Etapa 2: preprocesamiento (ambos frames) */
+    t0 = now_ms();
+    if ((rc = of_preprocess(&raw1, &pp1)) != 0 ||
+        (rc = of_preprocess(&raw2, &pp2)) != 0) {
+        fprintf(stderr, "Error en of_preprocess (codigo %d)\n", rc);
+        goto cleanup;
+    }
+    t_pre = now_ms() - t0;
+
+    /* Etapa 3: Lucas-Kanade escalar */
+    t0 = now_ms();
+    rc = of_lk_scalar(&pp1, &pp2, &flow);
+    t_lk = now_ms() - t0;
+    if (rc != 0) {
+        fprintf(stderr, "Error en of_lk_scalar (codigo %d)\n", rc);
+        goto cleanup;
     }
 
-    t_after_lk = now_ms();
+    /* Etapa 4: resultados y mediciones */
+    printf("Frames: %dx%d\n", raw1.width, raw1.height);
+    printf("Tiempo carga         : %8.2f ms (2 frames)\n", t_load);
+    printf("Tiempo preprocesado  : %8.2f ms (2 frames)\n", t_pre);
+    printf("Tiempo LK escalar    : %8.2f ms\n", t_lk);
+    print_flow_stats(&flow);
 
-    /* ========================================================================
-     *  ETAPA 4 — SAVE: persistencia de resultados
-     * ======================================================================== */
+    /* TODO (Persona 4): cuando metrics.c este implementado, calcular EPE
+     * con of_compute_epe() contra el ground truth. */
+    of_save_results(out_path, &flow, t_lk);
 
-    /* Calcula el tiempo acumulado hasta ahora para pasarlo al CSV */
-    const double lk_elapsed_ms = t_after_lk - t_start;
+    status = 0;
 
-    /* Persiste el flujo optico y el tiempo en formato CSV */
-    of_save_results("../results/last_run.csv", &flow, lk_elapsed_ms);
-
-    t_after_save = now_ms();
-
-    /* ========================================================================
-     *  Reporte de tiempos por etapa
-     * ========================================================================
-     *
-     *  CRITICO: el formato debe ser exactamente:
-     *      [N] NAME <tiempo> ms
-     *      TOTAL  <tiempo> ms
-     *
-     *  No agregar lineas adicionales que contengan "TOTAL" o "[N]".
-     *  No cambiar el orden de los campos ni la posicion del valor.
-     */
-    printf("[1] IO          %.3f ms\n", t_after_io   - t_start);
-    printf("[2] PREPROCESS  %.3f ms\n", t_after_pre  - t_after_io);
-    printf("[3] LK_SCALAR   %.3f ms\n", t_after_lk   - t_after_pre);
-    printf("[4] SAVE        %.3f ms\n", t_after_save - t_after_lk);
-    printf("TOTAL           %.3f ms\n", t_after_save - t_start);
-
-    /* ========================================================================
-     *  Liberacion de memoria
-     * ======================================================================== */
-    free(f1.data);
-    free(f2.data);
-    free(p1.data);
-    free(p2.data);
+cleanup:
+    free(raw1.data);
+    free(raw2.data);
+    free(pp1.data);
+    free(pp2.data);
     free(flow.u);
     free(flow.v);
-
-    return 0;
+    return status;
 }
