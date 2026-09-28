@@ -230,7 +230,7 @@ int main(int argc, char **argv)
     }
     t_pre = now_ms() - t0;
 
-    /* [3] Lucas-Kanade escalar */
+/* [3] Lucas-Kanade Scalar vs NEON */
     t0 = now_ms();
     rc = of_lk_scalar(&pp1, &pp2, &flow);
     t_lk = now_ms() - t0;
@@ -238,6 +238,23 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error en of_lk_scalar (codigo %d)\n", rc);
         goto cleanup;
     }
+
+    /* Ejecución y perfilado NEON */
+    double t0_neon = now_ms();
+    rc = of_lk_neon(&pp1, &pp2, &flow);
+    double t_neon = now_ms() - t0_neon;
+    if (rc != 0) {
+        fprintf(stderr, "Error en of_lk_neon (codigo %d)\n", rc);
+        goto cleanup;
+    }
+
+    /* Imprimir métricas de ejecución */
+    printf("[1] IO          %10.3f ms\n", t_load);
+    printf("[2] PREPROCESS  %10.3f ms\n", t_pre);
+    printf("[3] LK_SCALAR   %10.3f ms\n", t_lk);
+    printf("[4] LK_NEON     %10.3f ms\n", t_neon);
+    printf("[5] SAVE        %10.3f ms\n", t_save);
+    printf("TOTAL           %10.3f ms\n", t_load + t_pre + t_lk + t_save);
 
     /* Diagnostico del resultado (no forma parte de los tiempos) */
     printf("Frames: %dx%d\n", raw1.width, raw1.height);
