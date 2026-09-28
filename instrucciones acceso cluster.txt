@@ -1,0 +1,34 @@
+Sobre acceso al cluster de AMD Kria
+
+Antes de loguearse, deben generar una llave SSH. Pueden seguir la instrucciones de esta documentacion. Pueden generar la de ed25519
+Una vez generada la llave (archivo .pub), deben enviar la llave al correo l.leon@itcr.ac.cr para agregarlas en el sistema
+Pueden loguearse de alguna de las siguientes maneras:
+
+a. Usando el comando SSH directo:
+
+ssh -J el5859@login.cluster.ecaslab.org:9222 el5859@192.168.1.8x
+
+
+b. Registrando el Jump host dentro del ~/.ssh/config:
+
+Host ecaslab
+    HostName login.cluster.ecaslab.org
+    User el5859
+    Port 9222
+
+Host kria8x
+    HostName 192.168.0.8x
+    User el5859
+    ProxyJump ecaslab
+
+
+Luego se loguean:
+
+ssh kria8x
+
+
+El x en las IP y los nombres de la Kria son bajo asignación y se les dará una a cada grupo para los laboratorios de FPGA.
+
+Para esto, deben usar únicamente Linux, ya que será el OS oficial del curso. Cualquier problema relacionado con otros OS, no serán cubiertos
+
+Si no les conecta con login.cluster.ecaslab.org, usar 51.161.8.220 
