@@ -53,3 +53,13 @@ if(NOT MSVC)
         m
     )
 endif()
+
+add_executable(test_metrics
+    tests/test_metrics.c
+    src/metrics.c
+)
+
+
+if(NOT MSVC)
+    target_link_libraries(test_metrics PRIVATE m)
+endif()

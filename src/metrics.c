@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #define OF_EPE_INVALID (-1.0f)
-#define SAVE_BUFFER_SIZE (64 * 1024)   /* 64 KB */
 
 float of_compute_epe(const OFFlow *estimated, const OFFlow *ground_truth)
 {
@@ -46,44 +45,14 @@ void of_save_results(const char *path, const OFFlow *flow, double elapsed_ms)
     FILE *fp = fopen(path, "w");
     if (fp == NULL) return;
 
-    /* Header */
     fprintf(fp, "width,height,elapsed_ms\n");
     fprintf(fp, "%d,%d,%.6f\n", flow->width, flow->height, elapsed_ms);
+
     fprintf(fp, "u,v\n");
-
     const size_t n = (size_t)flow->width * (size_t)flow->height;
-
-    /* Buffer para escritura en bloques */
-    char *buf = (char *)malloc(SAVE_BUFFER_SIZE);
-    if (buf == NULL) {
-        /* Fallback: sin buffer (lento) */
-        for (size_t i = 0; i < n; ++i) {
-            fprintf(fp, "%.6f,%.6f\n", flow->u[i], flow->v[i]);
-        }
-        fclose(fp);
-        return;
-    }
-
-    size_t pos = 0;
     for (size_t i = 0; i < n; ++i) {
-        int written = snprintf(buf + pos, SAVE_BUFFER_SIZE - pos,
-                               "%.6f,%.6f\n", flow->u[i], flow->v[i]);
-        if (written < 0) break;
-
-        pos += (size_t)written;
-
-        /* Cuando el buffer casi se llena, volcamos a disco */
-        if (pos + 64 >= SAVE_BUFFER_SIZE) {
-            fwrite(buf, 1, pos, fp);
-            pos = 0;
-        }
+        fprintf(fp, "%.6f,%.6f\n", flow->u[i], flow->v[i]);
     }
 
-    /* Volcar el remanente */
-    if (pos > 0) {
-        fwrite(buf, 1, pos, fp);
-    }
-
-    free(buf);
     fclose(fp);
 }

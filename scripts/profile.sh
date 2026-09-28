@@ -2,17 +2,17 @@
 # ============================================================================
 #  scripts/profile.sh
 # ----------------------------------------------------------------------------
-#  Perfilado del pipeline de Optical Flow (Escalar + NEON).
+#  Perfilado del pipeline de Optical Flow.
 #
 #  Ejecuta el binario `bench_main` N veces con el mismo par de frames y
 #  extrae los tiempos de cada etapa del pipeline, acumulandolos en un CSV.
 #
-#  Formato esperado en la salida del binario:
+#  Formato esperado en la salida del binario (una linea por etapa, la linea
+#  debe EMPEZAR con el marcador para evitar capturar texto incidental):
 #      [1] IO          <tiempo> ms
 #      [2] PREPROCESS  <tiempo> ms
 #      [3] LK_SCALAR   <tiempo> ms
-#      [4] LK_NEON     <tiempo> ms
-#      [5] SAVE        <tiempo> ms
+#      [4] SAVE        <tiempo> ms
 #      TOTAL           <tiempo> ms
 #
 #  Uso:
@@ -25,8 +25,8 @@ set -e
 #  1. Parametros de entrada
 # ----------------------------------------------------------------------------
 BIN="${1:-../build/bench_main}"
-FRAME1="${2:-../data/frames/frame_000001.png}"
-FRAME2="${3:-../data/frames/frame_000002.png}"
+FRAME1="${2:-../data/frame1.ppm}"
+FRAME2="${3:-../data/frame2.ppm}"
 N="${4:-100}"
 OUT="${5:-../results/profiling/times.csv}"
 
@@ -44,17 +44,18 @@ fi
 #  3. Preparacion del directorio y archivo de salida
 # ----------------------------------------------------------------------------
 mkdir -p "$(dirname "$OUT")"
-# Se añade la columna lk_neon_ms al encabezado del CSV
-echo "run,io_ms,preprocess_ms,lk_scalar_ms,lk_neon_ms,save_ms,total_ms" > "$OUT"
+echo "run,io_ms,preprocess_ms,lk_scalar_ms,save_ms,total_ms" > "$OUT"
 
 # ----------------------------------------------------------------------------
 #  4. Bucle de perfilado
 # ----------------------------------------------------------------------------
 for i in $(seq 1 "$N"); do
 
-    # Filtro estricto: solo lineas que EMPIEZAN con [1], [2], [3], [4], [5] o TOTAL.
+    # Filtro estricto: solo lineas que EMPIEZAN con [1], [2], [3], [4] o TOTAL.
+    # El awk extrae el penultimo campo (el valor numerico), asumiendo que la
+    # ultima palabra de la linea es la unidad ("ms").
     LINE=$("$BIN" "$FRAME1" "$FRAME2" 2>/dev/null | \
-        grep -E "^(\[[1-5]\]|TOTAL)" | \
+        grep -E "^(\[[1-4]\]|TOTAL)" | \
         awk '{for (j=1; j<=NF; j++) if ($j ~ /^-?[0-9]+(\.[0-9]+)?$/) v=$j; printf "%s,", v}')
 
     if [[ -z "$LINE" ]]; then
@@ -62,14 +63,14 @@ for i in $(seq 1 "$N"); do
         continue
     fi
 
-    # Verifica que tengamos exactamente 6 valores antes de escribir
+    # Verifica que tengamos exactamente 5 valores antes de escribir
     NFIELDS=$(echo "$LINE" | awk -F',' '{print NF-1}')  # -1 por la coma final
-    if [[ "$NFIELDS" -ne 6 ]]; then
-        echo "WARN: run $i con$NFIELDS campos (esperado 6), se omite" >&2
+    if [[ "$NFIELDS" -ne 5 ]]; then
+        echo "WARN: run $i con $NFIELDS campos (esperado 5), se omite" >&2
         continue
     fi
 
-    echo "$i,${LINE\%,}" >> "$OUT"
+    echo "$i,${LINE%,}" >> "$OUT"
 done
 
 # ----------------------------------------------------------------------------
