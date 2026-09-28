@@ -16,16 +16,10 @@
 #define OF_ERR_ARGS   -1
 #define OF_ERR_ALLOC  -2
 
-int of_lk_neon(const OFImage *frame1, const OFImage *frame2, OFFlow *flow)
-{
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-    /*
-     * Implementation with ARM NEON intrinsics (running on Kria KV260 ARM CPU).
-     * Vectorized computation of gradients and structure tensor accumulations.
-     */
-    return of_lk_scalar(frame1, frame2, flow); // TODO: Replace with explicit NEON loops
-#else
-    /* Fallback for x86_64 development machines */
-    return of_lk_scalar(frame1, frame2, flow);
-#endif
+int of_lk_neon(const OFImage *frame1, const OFImage *frame2, OFFlow *flow) {
+    // TODO: implementacion real (Persona 3, version NEON)
+    (void)frame1;
+    (void)frame2;
+    (void)flow;
+    return 0;
 }
