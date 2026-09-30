@@ -1,0 +1,65 @@
+Quiero charlar contigo y que me hagas entender de que va el proyecto. Que alcances tiene el optical flow. Estoy desarrollando el Avance 1 pero primero quiero tener pleno conocimiento del tema
+
+Uy, treinta y nueve referencias una por una sería muchísimo para ir hablando en voz, se me haría bastante largo y difícil de seguir así. Te propongo mejor enfocarnos en las que realmente sostienen el argumento central, que son unas ocho o diez, las que ya usa el propio documento para armar el argumento del vacío en el estado del arte.
+
+¿Querés que empecemos por esas, agrupadas por tema, FPGA, GPU y aprendizaje profundo, y de ahí vemos si hace falta profundizar en alguna más específica?
+
+Sí, podrías, yo aquí tengo el documento, podrías poner, cada referencia tiene un número asociado, ¿cierto? entre corchetes. Entonces, en vez de leerme todo el título, me pones, por ejemplo, corchete abierto uno, corchete cerrado, y me dices, este estudio dice que, y Tan tan.
+
+Dale, así es más rápido de seguir. Vamos por grupos.
+
+Empezando por FPGA. Referencia uno, es el estudio de Komorkiewicz, que compara implementar Horn-Schunck con números de punto flotante contra números de punto fijo dentro de una FPGA. La conclusión es que con punto fijo se logra mejor eficiencia energética sin perder mucha precisión. Esto te sirve para justificar por qué en FPGA conviene pensar en representaciones numéricas simples, no solo el algoritmo en sí.
+
+Referencia doce, es Blachut y Kryjak, el estudio más citado del lado FPGA. Logran Lucas-Kanade y Horn-Schunck multi-escala corriendo a cuatro K y sesenta cuadros por segundo con menos de seis vatios, pero en una placa de evaluación genérica Zynco UltraScale Plus. Este es tu principal argumento de que sí existe trabajo serio en FPGA para optical flow clásico, pero no en el Kria KV260 específicamente.
+
+Referencia seis, es la librería Vitis Vision de AMD, que trae bloques HLS ya hechos para Lucas-Kanade piramidal y TV-L1. Te sirve para decir que la herramienta existe, pero nadie ha hecho el diseño de referencia completo validado en el KV260.
+
+¿Seguimos ahora con el grupo de GPU, o querés que me detenga más en alguna de estas tres primero?
+
+Me parece. Ahora sí, con la GPU.
+
+Vamos con GPU, entonces.
+
+Referencia diecinueve, es el SDK de DeepStream de NVIDIA, específicamente el plugin llamado gst-nvof. Esto documenta el acelerador de hardware de flujo óptico que traen las GPUs NVIDIA más modernas. Te sirve para justificar, por contraste, que el Jetson Nano no tiene este acelerador, entonces cualquier cosa clásica en el Nano corre por fuerza bruta usando CUDA genérico.
+
+Referencia veintitrés, es la documentación de VPI, la interfaz de programación de visión de NVIDIA. Ahí se confirma que en el Jetson Nano los métodos clásicos, como Farneback y TV-L1, corren en modo CPU o CUDA genérico, precisamente porque el Nano carece de ese acelerador dedicado. Esta es tu evidencia técnica más directa de la limitación del Nano.
+
+Referencia veinticuatro, es el trabajo de Seznec y otros, que logra sesenta cuadros por segundo de flujo óptico denso, pero en un Jetson AGX Xavier de treinta vatios, una placa mucho más potente y con más consumo que el Nano. Te sirve para mostrar que sí hay trabajo serio de optical flow en GPU, pero enfocado en las gamas altas, dejando al Nano con cobertura escasa.
+
+Referencia tres, es NeuFlow v2, un modelo de aprendizaje profundo liviano que logra más de veinte cuadros por segundo en un Jetson Orin Nano, que es distinto y bastante más nuevo que el Jetson Nano original que ustedes están usando. Refuerza la misma idea: el trabajo reciente en Jetson se concentra en hardware más nuevo, no en el Nano clásico.
+
+¿Seguimos ahora con el grupo de aprendizaje profundo, o preferís que retomemos ya la redacción del apartado con lo que llevamos?
+
+Si te refieres al grupo de aprendizaje profundo, como el prototipo NC, o no sé si tienes relación, adelante.
+
+No, son dos cosas distintas, aclaro rápido para que no se mezclen. El grupo de "aprendizaje profundo" son las referencias sobre redes neuronales para optical flow, como RAFT o FlowFormer++, que forman parte del estado del arte que están comparando. El prototipo en C, en cambio, es la primera entrega de implementación de ustedes, en la semana siete, corriendo Lucas-Kanade o TV-L1 clásico con NEON. No están relacionados directamente, solo comparten el tema general de optical flow.
+
+Ahora sí, vamos con las referencias de aprendizaje profundo. Referencia diez, es FlowFormer plus plus, el estado del arte actual en precisión, que logra un error de punto nueve seis tres píxeles en el benchmark Sintel Clean. Te sirve para mostrar el techo de precisión que existe, pero que es inalcanzable en un dispositivo de bajo consumo como los que ustedes usan.
+
+Referencia siete, es RAFT, el modelo que popularizó el uso de transformaciones recurrentes de campos de todos los pares para optical flow, logrando un cinco coma diez por ciento de error Fl-all en el benchmark KITTI dos mil quince. Es la base sobre la que se construyeron los modelos posteriores.
+
+Referencia once, es SEA-RAFT, una versión más liviana de RAFT, con solo un millón trescientos mil parámetros aproximadamente, pensada para dispositivos con menos recursos. Junto con NeuFlow v2 que ya mencionamos, te sirve para mostrar que sí hay esfuerzos de hacer estos modelos más chicos, pero aun así siguen siendo pesados para algo como el Jetson Nano original o el Kria KV260.
+
+No estoy muy convencido de tal cual se planteó el estudio preliminar y cómo se planteó esa esa necesidad de comprar, o sea, me cuesta ver el objetivo de ese problema, porque dice que se debe, el enunciado dice, se debe explicar cómo la solución al problema es novedosa en comparación con otras soluciones existentes.
+
+en
+
+Ah, ok, ahí veo la tensión que te está costando, y tiene sentido cuestionarlo.
+
+El punto fino es este: la novedad de tu proyecto no está en inventar un algoritmo nuevo de optical flow, ni en descubrir una técnica que nadie conocía. Lucas-Kanade y TV-L1 ya existen hace décadas. La novedad, tal como está planteada en el estudio preliminar, es de tipo empírico y de caracterización: nadie ha tomado estos dos algoritmos específicos y los ha corrido, medido y comparado de forma controlada exactamente en estas dos placas, el Kria KV260 y el Jetson Nano, con las mismas métricas y los mismos benchmarks de validación.
+
+Eso es válido como contribución científica, es lo que se llama un estudio comparativo o de caracterización, y de hecho es un tipo de aporte común y respetado en computación heterogénea, porque genera un dato que antes no existía y que sirve para que otros ingenieros decidan qué plataforma les conviene según su caso. Pero entiendo la incomodidad: si uno espera que "novedoso" signifique un algoritmo o arquitectura nunca antes vista, este planteamiento se siente más modesto que eso.
+
+¿Es esa la parte que te cuesta aceptar, que la novedad sea "somos los primeros en medir esto" en vez de "inventamos algo nuevo"? Porque si es así, hay una manera de fortalecer el argumento sin cambiar el tema.
+
+De hecho, sí. El enunciado del proyecto, no sé qué intenciones tiene en cuanto a eso, si o si el, a como estamos planteando la solución, se alinea con lo que está pidiendo el enunciado. Aunque sí, esa frase me gustó mucho de la que la novedad sea, somos los primeros en medir en vez de inventamos algo nuevo, eso me gusta, y podría comprártelo. Habría que reforzar un poco más ese argumento también.
+
+Perfecto, entonces vamos a reforzarlo, porque tenés razón en que conviene dejarlo bien blindado antes de entregarlo.
+
+Mirando otra vez el enunciado completo del curso, hay una pista clave en la lista de ejemplos de temas que da el profesor. Fijate que casi todos son de esa misma naturaleza: "desarrollar una plataforma heterogénea que acelere tal cosa", no "inventar un algoritmo nuevo". El curso se llama Computación Heterogénea, no Algoritmos Nuevos de Visión. Entonces la novedad que espera el curso, en general, es a nivel de arquitectura y de plataforma: cómo repartís el cómputo entre CPU, GPU y FPGA, no a nivel de qué fórmula matemática inventaste. Eso ya te da bastante respaldo de que tu enfoque encaja con la intención real del enunciado.
+
+Para reforzar el argumento específico de la novedad como comparación, hay tres ángulos que podés sumar. Primero, el ángulo de rigurosidad metodológica: no es solo "correr el algoritmo en dos placas y ver qué pasa", es aplicar la misma metodología de tres etapas, C con NEON, luego GPU o FPGA, con las mismas métricas y los mismos benchmarks estándar en ambos lados, lo cual muchos estudios previos no hacen, porque comparan resultados de papers distintos con condiciones distintas, no una medición propia bajo las mismas condiciones controladas.
+
+Segundo, el ángulo de vacío de herramienta, que ya tenían identificado: no existe un diseño de referencia validado de optical flow en el Kria KV260 específicamente, entonces al construirlo ustedes mismos, ya sea con HLS a partir de los bloques de Vitis Vision, están generando algo que no existía como artefacto reproducible, no solo como dato de comparación.
+
+Tercero, el ángulo de utilidad práctica: el resultado no es solo curiosidad académica, es información que un ingeniero necesitaría para decidir qué plataforma comprar o usar en un proyecto real de visión embebida, dado que ahora mismo tendría que adivinar o extrapolar de estudios en placas distintas.
