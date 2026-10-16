@@ -88,7 +88,8 @@ Ejecutar benchmark único
 ```
 ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png
 ```
-
+### C. Video demostrativo
+https://github.com/user-attachments/assets/01c70c37-749b-45bd-bf76-07d737b1cba1
 
 ### Discord Channel
 https://discord.com/channels/1342248894721167360/1536185160062468178
