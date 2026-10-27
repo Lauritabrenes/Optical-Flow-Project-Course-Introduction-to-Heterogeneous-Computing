@@ -25,6 +25,7 @@ int of_preprocess(const OFImage *in, OFImage *out);
 // Etapa 3: optical flow
 int of_lk_scalar(const OFImage *frame1, const OFImage *frame2, OFFlow *flow);
 int of_lk_neon(const OFImage *frame1, const OFImage *frame2, OFFlow *flow);
+int of_lk_cuda(const OFImage *frame1, const OFImage *frame2, OFFlow *flow);
 
 // Etapa 4: resultados y metricas
 float of_compute_epe(const OFFlow *estimated, const OFFlow *ground_truth);
