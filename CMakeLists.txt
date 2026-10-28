@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.10)
 project(optical_flow_prototype C)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -7,7 +7,7 @@ endif()
 
 # Optimizaciones ARM NEON
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm")
-    add_compile_options(-O3 -march=armv8-a+simd)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a+simd")
     add_definitions(-DHAVE_NEON)
 endif()
 
@@ -23,7 +23,7 @@ if(CMAKE_CUDA_COMPILER)
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 11)
     add_definitions(-DHAVE_CUDA)
-    set(CUDA_SOURCES src/lk_cuda.cu)
+    set(CUDA_SOURCES src/lk_cuda.cu src/lk_cuda_opt.cu src/lk_cuda_shared.cu)
     message(STATUS "CUDA detectado. Compilando Acelerador GPU.")
 else()
     message(STATUS "CUDA no detectado. Omitiendo lk_cuda.cu.")

@@ -15,7 +15,7 @@
 #include <time.h>
 #include "of.h"
 
-typedef enum { MODE_SCALAR, MODE_NEON, MODE_CUDA } ComputeMode;
+typedef enum { MODE_SCALAR, MODE_NEON, MODE_CUDA, MODE_CUDA_OPT, MODE_CUDA_SHARED} ComputeMode;
 
 typedef struct {
     const char *path1;
@@ -72,6 +72,8 @@ static int parse_args(int argc, char **argv, Args *a)
             if (i + 1 >= argc) return -1;
             if (strcmp(argv[i+1], "neon") == 0) a->mode = MODE_NEON;
             else if (strcmp(argv[i+1], "cuda") == 0) a->mode = MODE_CUDA;
+            else if (strcmp(argv[i+1], "cuda_opt") == 0) a->mode = MODE_CUDA_OPT;
+            else if (strcmp(argv[i+1], "cuda_shared") == 0) a->mode = MODE_CUDA_SHARED;
             else a->mode = MODE_SCALAR;
             i++;
         } else if (positional == 0) {
@@ -206,9 +208,23 @@ int main(int argc, char **argv)
 #ifdef HAVE_CUDA
         rc = of_lk_cuda(&pp1, &pp2, &flow);
 #else
-        fprintf(stderr, "Aviso: CUDA no disponible. Ejecutando scalar como fallback.\n");
         rc = of_lk_scalar(&pp1, &pp2, &flow);
 #endif
+
+    } else if (args.mode == MODE_CUDA_OPT) {
+#ifdef HAVE_CUDA
+        rc = of_lk_cuda_opt(&pp1, &pp2, &flow);
+#else
+        rc = of_lk_scalar(&pp1, &pp2, &flow);
+#endif
+
+    } else if (args.mode == MODE_CUDA_SHARED) {
+#ifdef HAVE_CUDA
+        rc = of_lk_cuda_shared(&pp1, &pp2, &flow);
+#else
+        rc = of_lk_scalar(&pp1, &pp2, &flow);
+#endif
+
     } else {
         rc = of_lk_scalar(&pp1, &pp2, &flow);
     }
