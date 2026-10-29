@@ -1,9 +1,9 @@
 \documentclass[conference]{IEEEtran}
-\usepackage{cite}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{graphicx}
 \IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
 \usepackage{amsmath}
+\usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
@@ -16,41 +16,11 @@
 \usepackage{url}
 \usepackage{placeins}
 \usepackage{comment}
-\usepackage{hyperref}
-\usepackage{tikz}
-\usetikzlibrary{positioning}
+
 
 \begin{document}
 
-\title{Título de Nuestro Artículo en Formato IEEE}
-
-\author{\IEEEauthorblockN{Autor Uno, Autor Dos, Autor Tres}
-\IEEEauthorblockA{\textit{Departamento de Ingeniería} \\
-\textit{Universidad XYZ}\\
-Ciudad, País}}
-
-\maketitle
-
-\begin{abstract}
-Este es el resumen de nuestro artículo configurado con el formato IEEE.
-\end{abstract}
-
-\begin{IEEEkeywords}
-Palabras clave, LaTeX, Linux, Git.
-\end{IEEEkeywords}
-
-\section{Introducción}
-Aquí empieza la introducción del documento.
-
-\end{document}
-\documentclass[conference]{IEEEtran}
-\usepackage{cite}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{graphicx}
-
-\begin{document}
-
-\title{Título de Nuestro Artículo en Formato IEEE}
+\title{Comparative Acceleration of Optical Flow Estimation on Heterogeneous Embedded Platforms: FPGA vs. Embedded GPU}
 
 \author{\IEEEauthorblockN{George Briceño Celestino}
 \IEEEauthorblockA{\textit{Escuela de Ingeniería Electrónica} \\
@@ -69,7 +39,7 @@ lauritabrenes@estudiantec.cr}
 \IEEEauthorblockN{Marlon Méndez Naranjo}
 \IEEEauthorblockA{\textit{Escuela de Ingeniería Electrónica} \\
 \textit{Instituto Tecnológico de Costa Rica}\\
-Cartago, Costa Rica \\
+San Carlos, Costa Rica \\
 mnaranjo@estudiantec.cr}
 \and
 
@@ -82,15 +52,274 @@ rovenegas@estudiantec.cr}
 
 \maketitle
 
-\begin{abstract}
-Este es el resumen de nuestro artículo configurado con el formato IEEE.
-\end{abstract}
-
 \begin{IEEEkeywords}
-Palabras clave, LaTeX, Linux, Git.
+Optical flow, Heterogeneous computing, FPGA, Embedded GPU, AMD Kria, NVIDIA Jetson
 \end{IEEEkeywords}
 
-\section{Introducción}
-Aquí empieza la introducción del documento.
+\section{Introduction}
+
+Optical flow estimation is one of the fundamental primitives of computer vision, enabling the computation of apparent pixel-level motion between consecutive image frames. This capability is critical for applications such as autonomous navigation, robotic obstacle avoidance, video stabilization, and augmented reality systems \cite{ref4}. As these applications increasingly migrate toward embedded and edge platforms with strict power and latency constraints, the need for efficient hardware acceleration of optical flow algorithms has become a pressing research challenge.
+
+Classical optical flow methods, including Lucas-Kanade (LK) \cite{ref40}, Horn-Schunck (HS) \cite{ref1}, and Total Variation L1 (TV-L1) \cite{ref17}, are grounded in the Brightness Constancy Constraint and employ variational or local parametric formulations to estimate dense or sparse motion fields. These methods exhibit highly regular computational structures --- gradient computations, iterative solvers, and multi-scale pyramids --- that map efficiently onto parallel hardware architectures. In contrast, deep learning-based approaches such as RAFT \cite{ref7}, FlowFormer++ \cite{ref10}, and NeuFlow\_v2 \cite{ref3} have dramatically surpassed classical methods in accuracy, with the current state of the art reaching an End-Point Error (EPE) of 0.963 pixels on the Sintel Clean benchmark \cite{ref10}. However, deploying these models on resource-constrained embedded hardware remains an open challenge due to their reliance on complex tensor operations, large memory footprints, and iterative refinement stages. The current state of the art, FlowFormer++, achieves 1.07 pixels End-Point Error (EPE) on the Sintel Clean benchmark and 1.94 EPE on Sintel Final \cite{ref10}.
+
+Heterogeneous computing platforms that combine ARM processors, FPGAs, and embedded GPUs offer a promising path to bridge the gap between algorithmic accuracy and real-time embedded performance. FPGA implementations using High-Level Synthesis (HLS) have demonstrated exceptional energy efficiency for classical optical flow algorithms, with Horn-Schunck and Lucas-Kanade designs achieving 1080p60 on Xilinx Zynq UltraScale+ devices under 6 W \cite{ref1,ref13}. On the other hand, NVIDIA Jetson platforms provide superior flexibility for deep learning deployment through CUDA and TensorRT, with NeuFlow\_v2 achieving over 20 FPS on Jetson Orin Nano \cite{ref3}.
+
+Despite the maturity of individual platform implementations, the literature reveals a significant gap no direct comparative benchmark exists between the AMD Kria KV260 FPGA platform and the NVIDIA Jetson Nano for optical flow estimation. Existing studies report results on generic Zynq-7000 or Zynq UltraScale+ platforms without targeting the specific KV260 reference design, while Jetson benchmarks focus predominantly on the TX2, Xavier, and Orin generations with sparse coverage of the Nano \cite{ref13,ref25}. Furthermore, the AMD Vitis Vision Library lacks validated reference designs for optical flow on the Kria KV260, representing an additional contribution opportunity \cite{ref6,ref17}.
+
+This work proposes a rigorous comparative evaluation of classical optical flow algorithms --- specifically Dense Pyramidal Lucas-Kanade and TV-L1 --- on the AMD Kria KV260 (Zynq UltraScale+ MPSoC) and NVIDIA Jetson Nano (Tegra X1 Maxwell) platforms. The evaluation encompasses multiple resolutions (VGA, 720p, 1080p), standard validation benchmarks (Middlebury, KITTI 2015), and systematic measurement of performance metrics including frames per second, per-frame latency, average power consumption, energy per frame, and computational efficiency. The contribution aims to provide the first published direct comparison between these two widely available embedded platforms for optical flow, offering practitioners and researchers an objective basis for platform selection in real-time vision applications.
+
+The remainder of this paper is organized as follows: Section II reviews the background and related work on optical flow algorithms and heterogeneous platforms.
+
+\section{Background and Related Work}
+
+\subsection{Optical Flow Fundamentals}
+
+Optical flow estimation is grounded in the Brightness Constancy Constraint (BCC), which assumes that pixel intensity remains constant between consecutive frames, yielding the fundamental equation
+\begin{equation}
+I_xu + I_yv + I_t = 0,
+\end{equation}
+where $I_x$ and $I_y$ denote spatial intensity gradients, $I_t$ is the temporal gradient, and $(u,v)$ represents the flow vector components \cite{ref4}. Since this single equation is underdetermined for two unknowns per pixel, classical methods are distinguished by their regularization strategy. Local methods, exemplified by Lucas-Kanade (LK) \cite{ref40}, assume uniform motion within a spatial neighborhood and solve an overdetermined least-squares system per pixel, offering inherent per-pixel parallelism ideal for hardware acceleration but limited to textured regions and small displacements --- a limitation addressed by multi-scale pyramidal extensions. Global methods, such as Horn-Schunck (HS) \cite{ref1}, impose a smoothness constraint across the entire image through variational energy minimization, producing dense flow fields via iterative solvers (Jacobi/Gauss-Seidel) whose regular structure maps efficiently onto FPGA line-buffer architectures. Variational methods like TV-L1 \cite{ref17} replace the quadratic data term with an L1 norm, achieving greater robustness to outliers and occlusions through dualization (Chambolle-Pock), and are available as optimized HLS kernels in the AMD Vitis Vision Library \cite{ref6,ref17}. More recently, deep learning approaches --- from FlowNet2 \cite{ref2} and PWC-Net \cite{ref8} to RAFT \cite{ref7} and FlowFormer++ \cite{ref10} --- have dramatically surpassed classical methods in accuracy by learning hierarchical feature representations, with FlowFormer++ achieving 1.07 EPE on Sintel Clean and 1.94 EPE on Sintel Final \cite{ref10}. However, their deployment on embedded platforms with less than 15 W TDP remains an active research challenge due to memory bandwidth constraints and iterative refinement overhead \cite{ref3,ref11}.
+
+\subsection{Classical Methods on Heterogeneous Platforms}
+
+\textbf{Implementations in FPGA:}
+Classical optical–flow algorithms on FPGA consistently achieve superior energy efficiency and deterministic latency. Komorkiewicz \cite{ref1} demonstrates high–throughput Horn–Schunck on Zynq–7000 with favorable energy per frame, while Blachut and Kryjak \cite{ref13} report multi–scale Lucas–Kanade and Horn–Schunck designs scaling up to validated 4K@60\,FPS under 6\,W \cite{ref13}. Production–ready HLS kernels for Dense Pyramidal LK and TV–L1 are available in the Vitis Vision Library \cite{ref6,ref17}, though no complete, publicly validated optical–flow reference design exists for the Kria KV260. At the opposite end of the design space, BNN–based approaches such as Ultra–Flow reach hundreds of FPS at VGA resolution with reduced accuracy \cite{ref16}. These results motivate benchmarking classical kernels (Dense Pyramidal LK, TV–L1) on KV260 and embedded GPUs to quantify throughput, energy per frame, and estimation quality.
+
+\textbf{Implementations in embedded GPU:}
+Embedded GPUs provide flexible deployment of classical and learned optical–flow methods, with performance strongly tied to device generation and available accelerators. On Jetson Nano, classical methods (Farnebäck, TV–L1) run via OpenCV+CUDA or VPI in CPU/CUDA mode because the Nano lacks NVIDIA's Optical Flow Accelerator (OFA) \cite{ref20,ref24}. Higher–end Jetson devices (AGX Xavier, Orin) support dense optical flow at 60\,FPS and efficient inference of lightweight DNNs using TensorRT (e.g., FastFlowNet, NeuFlow\_v2), achieving tens of FPS through kernel fusion and quantization \cite{ref25,ref27,ref28}. In practice, GPUs accelerate development and excel for DNN–based flow, while FPGAs offer better energy per frame and deterministic latency for classical kernels. A controlled comparison measuring FPS, per–frame latency, average power, energy/frame, and EPE (Middlebury, KITTI) is therefore required for informed platform selection.
+
+\subsection{Deep Learning Approaches for Optical Flow}
+
+The evolution of deep learning-based optical flow follows: FlowNet2 \cite{ref2} $\rightarrow$ PWC-Net \cite{ref8} $\rightarrow$ RAFT \cite{ref7} $\rightarrow$ FlowFormer++ \cite{ref10}. RAFT achieves 5.10\% Fl-all on KITTI-2015 through recurrent all-pairs field transforms, while FlowFormer++ reaches 1.94 EPE on Sintel Final via masked cost volume autoencoding \cite{ref10}. Lightweight models targeting edge deployment include SEA-RAFT \cite{ref11} ($\sim$1.3M parameters) and NeuFlow\_v2 \cite{ref3} ($\sim$2.5M parameters, $>$20 FPS on Jetson Orin Nano). However, DNN deployment on platforms below 15 W TDP remains challenging due to memory bandwidth constraints and iterative refinement overhead \cite{ref3,ref11}.
+
+\subsection{ARM NEON Optimizations}
+
+ARM NEON is a SIMD (Single Instruction, Multiple Data) extension which is included in many ARM Cortex-A processors, this because instead of executing an operation on a single piece of data, it allows the same operation to be applied to several data simultaneously using vector registers of up to 128 bits \cite{ref39}. For example, in a multiplication operation for an algorithm in scalar processing one operation would be done at a time, but in the case of NEON it can be done by one in a vector operation, multiple elements can be processed simultaneously using vector instructions \cite{ref31}. This is especially useful in image processing, as the exact same operations are repeated on thousands or millions of pixels \cite{ref31,ref39}. For ARM, it is precisely called image processing, video, audio, and signal processing as suitable loads for NEON \cite{ref39}.
+
+Now, in the case of the Lucas–Kanade (LK) algorithm, it looks for an optical Flow, which tries to determine how it moved from a point between two consecutive images. The Lucas–Kanade (LK) method estimates optical flow by determining the apparent displacement of image points between consecutive frames \cite{ref40}. For this algorithm there are several stages that are excellent candidates for SIMD, such as: Lucas–Kanade standalone, LK optical-flow pyramid builder, pyramidal LK, Scharr, multi-channel blur, downsampling, derivatives, iterative tracking \cite{ref5}.
+
+NEON improves performance by using SIMD instructions, which allow the processor to apply the same operation to multiple data elements, such as several pixel values, in parallel instead of processing them one by one. KleidiCV 26.03 takes advantage of this type of Arm architecture feature through optimized computer vision kernels, and its optimizations are not limited to the Lucas–Kanade (LK) core, but can also cover other stages of the sparse optical flow pipeline, including pyramid construction, Scharr filtering, blurring, downsampling, and pyramidal LK \cite{ref5}. Therefore, KleidiCV and NEON should not be considered the same technology: NEON is an Arm SIMD instruction-set extension available on supported processors, while KleidiCV is a software library that provides optimized implementations of computer vision operations and can select or use implementations designed for different Arm architecture extensions, such as NEON, SVE2, SME, and SME2, depending on the target hardware.\cite{ref5}.
+
+This merely depends on the available hardware. In particular, the normal APIs use NEON or SVE2 by default, while the “sme" variants can use SME or SME2 \cite{ref5}. In addition, it should be noted that these are already integrated with OpenCV, which ARM indicates that since OpenCV 4.13, KleidiCV are enabled by default for AArch64 builds on Android, Linux and macOS \cite{ref5}, in order to reduce the execution time of image processing operations.
+
+It is important to keep in mind that the different optimizations using NEON should be considered as a complement to higher capacity accelerators, such as GPUs and FPGAs, since their main advantage is that the SIMD instructions are executed directly on the ARM processor, in order to avoid additional data transfers and allowing to accelerate preprocessing, post-processing stages or algorithm components that do not justify their execution in a dedicated accelerator \cite{ref26,ref31}. For this reason, NEON is very important in the different heterogeneous architectures and embedded systems where computational efficiency, energy consumption and balanced use of resources are important factors.
+
+\subsection{Research Gap and Positioning}
+
+
+Existing optical flow benchmarks on embedded platforms focus predominantly on high-end devices: NeuFlow\_v2 reports 20+ FPS on Jetson Orin Nano (15 W TDP) but provides no comparison to FPGA implementations \cite{ref3}, while Seznec et al. \cite{ref25} achieve 60 FPS dense optical flow on Jetson AGX Xavier (30 W) through operator fusion and pipeline optimization, yet their TV-L1 implementation strategy cannot be directly transferred to the Jetson Nano's Maxwell architecture lacking the Optical Flow Accelerator present in Turing and Ampere GPUs \cite{ref20,ref24}. On the FPGA side, Blachut and Kryjak \cite{ref13,ref36} validate multi-scale Lucas-Kanade and Horn-Schunck designs at 4K@60 FPS on Zynq UltraScale+ devices, but their work targets generic evaluation boards rather than the Kria KV260's specific camera interface, memory topology, and thermal envelope.
+
+Furthermore, while the AMD Vitis Vision Library provides production-ready HLS kernels for Dense Pyramidal Lucas-Kanade and TV-L1 \cite{ref6,ref17}, no complete, publicly validated optical flow reference design exists for the Kria KV260 Vision AI Starter Kit. Similarly, Jetson Nano benchmarks remain sparse compared to higher-end devices (TX2, Xavier, Orin), with most studies focusing on deep learning approaches rather than classical methods \cite{ref25,ref38}.
+
+This work addresses these gaps by providing a comparative benchmark between the Kria KV260 (Zynq UltraScale+ MPSoC) and Jetson Nano (Tegra X1 Maxwell) for classical optical flow estimation, specifically Dense Pyramidal Lucas-Kanade and TV-L1 algorithms across multiple resolutions (VGA, 720p, 1080p) and standard validation benchmarks (Middlebury, KITTI 2015).
+
+\section{Project Progress 1}
+
+\subsection{Study of Other Solutions}
+
+
+
+Strengths and weaknesses of FPGA: existing designs, such as those by Komorkiewicz [1] and Blachut and Kryjak [12], demonstrate that Lucas-Kanade and Horn-Schunck on FPGA achieve high energy efficiency and deterministic latency, reaching up to 4K at 60 frames per second with less than 6 watts. AMD's Vitis Vision library [6] already offers optimized HLS kernels for pyramidal Lucas-Kanade and TV-L1. However, the weakness is clear: these results are validated on generic Zynq boards, not on the Kria KV260, and no complete published reference design exists for that specific board.
+
+Strengths and weaknesses of embedded GPU: NVIDIA's ecosystem [19, 23] offers development flexibility through CUDA and VPI, and on higher-end platforms, as demonstrated by Seznec [24], 60 frames per second of dense optical flow are achieved. The specific weakness is that these results correspond to Xavier and Orin, while the Jetson Nano, due to its Maxwell architecture, lacks a dedicated optical flow accelerator, forcing brute-force execution on generic CUDA.
+
+Strengths and weaknesses of deep learning: models such as RAFT [7] and FlowFormer++ [10] achieve outstanding accuracy, with FlowFormer++ reaching 0.963 pixels of error on Sintel Clean. Even lightweight versions such as SEA-RAFT [11] and NeuFlow v2 [3] attempt to reduce model size. The weakness is that, even when reduced, they still demand more memory and computation than the Jetson Nano or the Kria KV260 can efficiently provide below 15 watts.
+
+Feasibility: from this analysis it follows that classical methods, Lucas-Kanade and TV-L1, are the only ones viable for efficient deployment on both platforms within the project's power budget, while deep learning is not feasible under those constraints.
+
+Observed challenges:
+
+\begin{itemize}
+    \item First, the absence of a validated optical flow reference design for the Kria KV260.
+    \item Second, the absence of comparable data between FPGA and embedded GPU under the same metrics and the same algorithm.
+    \item Third, scarce coverage of the Jetson Nano in the literature, mostly concentrated on higher Jetson generations.
+\end{itemize}
+
+\subsection{Proposed Solution}
+
+A comparative test bench is proposed that implements Dense Pyramidal Lucas-Kanade and TV-L1 on the two heterogeneous computing platforms under study, the AMD Kria KV260 and the NVIDIA Jetson Nano, following an identical three-stage methodology on both: a baseline in C with NEON optimizations on the ARM processor of each board, followed by a platform-specific acceleration stage—HLS on the FPGA in the case of the Kria and CUDA on the GPU in the case of the Jetson.
+
+How it addresses the first challenge, the absence of a validated reference design for the KV260: a custom HLS implementation of the pyramidal Lucas-Kanade and TV-L1 kernels is built, starting from the blocks available in the Vitis Vision library [6], adapted and validated specifically on the camera interface, memory topology, and thermal envelope of the Kria KV260, thereby closing the gap identified by Blachut and Kryjak [12] when working on generic boards.
+
+How it addresses the second challenge, the absence of comparable data under the same conditions: by applying the same three-stage methodology and the same set of metrics—frames per second, latency per frame, average power, energy per frame, and estimation quality using the Middlebury and KITTI 2015 benchmarks—on both platforms, a directly comparable dataset between FPGA and embedded GPU is generated for the first time for these algorithms, something the current literature does not offer because each prior study [1, 12, 24] measures under different conditions and boards.
+
+How it addresses the third challenge, the scarce coverage of the Jetson Nano: the behavior of Lucas-Kanade and TV-L1 on the Nano's Maxwell architecture is explicitly documented, lacking the dedicated optical flow accelerator (OFA) present in higher generations [19, 23], thereby generating the first reference point focused on this specific platform instead of extrapolating from Xavier or Orin [24].
+
+Scope: the project is limited to the two classical algorithms mentioned, at three resolutions—VGA, 720p, and 1080p—evaluated on the Middlebury and KITTI 2015 validation sets. The implementation of deep learning methods falls outside the scope, given that, as established in the study of other solutions, they are not feasible under the power constraints of both platforms.
+
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width= 0.8 \linewidth]{Diagrama.png}
+\caption{Comparative architecture and implementation matrix for optical flow evaluation on AMD Kria KR260 and NVIDIA Jetson Nano.}
+\label{fig:Proposed architecture.}
+\end{figure}
+
+
+
+\subsection{Proposed Architecture}
+
+Figure \ref{fig:kria} shows the Level II architecture of the Kria KV260. The system is divided into two physically separated domains: the Processing System (PS), based on a quad-core ARM Cortex-A53 processor where the NEON baseline runs, and the Programmable Logic (PL), where the HLS kernels for pyramidal Lucas-Kanade and TV-L1 derived from the Vitis Vision library are implemented. Both domains communicate via AXI interconnect and share 4 GB of DDR4 memory. Input frames (dataset or camera) enter the system, are processed in PS or PL depending on the stage being evaluated, and the resulting flow field—a displacement vector (u, v) per pixel—is extracted along with the timestamps needed for latency calculation.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{Kria.png}
+\caption{Level II hardware architecture and data flow for optical flow processing on the Kria KV260.}
+\label{fig:kria}
+\end{figure}
+
+
+
+Figure \ref{fig:jetson_arch} shows the Level II architecture of the Jetson Nano. Unlike the Kria, the Tegra X1 integrates a quad-core ARM Cortex-A57 CPU and a Maxwell GPU with a single streaming multiprocessor (128 CUDA cores) on a unified LPDDR4 memory architecture of 4 GB, with a peak bandwidth of 25.6 GB/s. The NEON baseline runs on the CPU and native acceleration is implemented as CUDA kernels on the GPU. Unlike higher Jetson generations, the Nano does not have a dedicated optical flow accelerator (OFA), so acceleration relies exclusively on general-purpose CUDA computation.
+
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\linewidth]{jetson.png}
+\caption{Level II hardware architecture and data flow for optical flow processing on the Jetson Nano.}
+\label{fig:jetson_arch}
+\end{figure}
+
+
+
+\subsection{List of Experiments}
+
+Four experimental blocks are proposed, executed under controlled temperature and power supply conditions on both platforms, so that measured differences are attributable to the architecture and not to experimental variability. First, accuracy evaluation: pyramidal Lucas-Kanade and TV-L1 are run on the Middlebury and KITTI 2015 validation sets, comparing the estimated flow against the reference flow, to isolate the algorithm's own error from the error introduced by each hardware implementation. Second, resolution sweep: each algorithm is repeated at VGA, 720p, and 1080p, to observe how performance and power consumption scale with image size, and to distinguish whether the bottleneck is computation or memory bandwidth on each platform. Third, comparison between acceleration stages: each algorithm is measured in its NEON baseline version against its native accelerated version—HLS on the Kria and CUDA on the Jetson—to quantify the speedup factor and the power cost introduced by each dedicated accelerator. Fourth, cross-platform comparison: Kria is directly contrasted against Jetson under the same algorithm and resolution conditions, which is the central result of the project.
+
+\begin{itemize}
+    \item \textbf{Throughput:} frames processed per second at steady state, measured after the thermal preconditioning period, excluding initial data loading time and accelerator initialization time.
+
+    \item \textbf{Processing time per frame (ms):} measured end-to-end, from when the input frame is available in memory until the output flow is ready; mean and 95th percentile are reported to capture jitter.
+
+    \item \textbf{Average power:} obtained via software from the integrated rail monitoring sensors on each board (INA226 on the Kria KV260, INA3221 on the Jetson Nano), queried via console (sysfs / tegrastats) during the sustained execution window, without additional physical instrumentation.
+
+    \item \textbf{Energy per frame:} calculated as average power divided by throughput, in joules per frame, to normalize energy efficiency between platforms with different nominal power and different operating regimes.
+
+    \item \textbf{Estimation quality (EPE, end-point error):} the average Euclidean error between the estimated flow vector and the reference flow vector, calculated only over valid pixels (ground truth mask) of each dataset, expressed in pixels.
+\end{itemize}
+
+
+
+
+\begin{thebibliography}{38}
+
+\bibitem{ref1}
+M. Komorkiewicz, M. Kluczewski, and P. Skruch, ``Floating-Point versus Fixed-Point Optical Flow on FPGA,'' \textit{Sensors}, vol. 14, no. 2, pp. 2860--2891, 2014. \url{https://www.mdpi.com/1424-8220/14/2/2860}
+
+\bibitem{ref2}
+A. Dosovitskiy, P. Fischer, E. Ilg, et al., ``FlowNet: Learning Optical Flow with Convolutional Networks,'' arXiv preprint arXiv:1504.06852, 2015. \url{https://arxiv.org/abs/1504.06852}
+
+\bibitem{ref3}
+L. Kong and Z. Shen, ``NeuFlow\_v2: High-Efficiency Optical Flow Estimation on Edge Devices,'' arXiv:2408.10161, 2024. \url{https://arxiv.org/abs/2408.10161}
+
+\bibitem{ref4}
+Wikipedia contributors, ``Optical flow,'' \textit{Wikipedia, The Free Encyclopedia}, 2024. \url{https://en.wikipedia.org/wiki/Optical_flow}
+
+\bibitem{ref5}
+ARM Ltd., ``What's new in KleidiCV 26.03 for Computer Vision on Arm CPUs,'' \textit{ARM Developer Blog}, March 2026. \url{https://developer.arm.com/community/arm-community-blogs/b/ai-blog/posts/what-s-new-in-kleidicv-26-03-for-computer-vision-on-arm-cpus}
+
+\bibitem{ref6}
+Xilinx / AMD, ``Vitis Vision Library,'' 2022. \url{https://docs.amd.com/r/en-US/Vitis_Libraries/vision/index.html}
+
+\bibitem{ref7}
+Z. Teed and J. Deng, ``RAFT: Recurrent All-Pairs Field Transforms for Optical Flow,'' arXiv:2003.12039, 2020. \url{https://arxiv.org/abs/2003.12039}
+
+\bibitem{ref8}
+D. Sun, X. Yang, M.-Y. Liu, and J. Kautz, ``PWC-Net: CNNs for Optical Flow Using Pyramid, Warping, and Cost Volume,'' arXiv:1709.02371, 2018. \url{https://arxiv.org/abs/1709.02371}
+
+\bibitem{ref9}
+Z. Huang et al., ``FlowFormer: A Transformer Architecture for Optical Flow,'' arXiv:2203.16194, 2022. \url{https://arxiv.org/abs/2203.16194}
+
+\bibitem{ref10}
+H. Shi et al., ``FlowFormer++: Masked Cost Volume Autoencoding for Pretraining Optical Flow Estimation,'' arXiv:2303.01237, 2023. \url{https://arxiv.org/abs/2303.01237}
+
+\bibitem{ref11}
+S. Wang et al., ``SEA-RAFT: Simple, Efficient, Accurate RAFT for Optical Flow,'' arXiv:2405.14793, 2024. \url{https://arxiv.org/abs/2405.14793}
+
+\bibitem{ref13}
+P. Blachut and T. Kryjak, ``Real-Time Efficient FPGA Implementation of the Multi-Scale Lucas-Kanade and Horn-Schunck Optical Flow Algorithms for a 4K Video Stream,'' \textit{Sensors}, vol. 22, no. 13, p. 5017, 2022. \url{https://www.mdpi.com/1424-8220/22/13/5017}
+
+\bibitem{ref14}
+P. Blachut and T. Kryjak, ``Multi-scale Lucas-Kanade Optical Flow on FPGA for Surveillance,'' in \textit{Proc. DASIP}, 2018. \url{https://www.researchgate.net/publication/325306206}
+
+\bibitem{ref15}
+S. Chang et al., ``FPGA Implementation of Optical Flow Using High-Level Synthesis,'' in \textit{Proc. ASAP 2013}, NSF SHREC, 2013. \url{https://ieeexplore.ieee.org/document/6601837}
+
+\bibitem{ref16}
+A. Author et al., ``Ultra-Flow: Real-Time Optical Flow on FPGA with Binary Neural Networks,'' \textit{Springer Signal, Image and Video Processing}, 2025. \url{https://link.springer.com/journal/11760}
+
+\bibitem{ref17}
+AMD/Xilinx, ``Vitis Vision Library Design Examples,'' 2022. \url{https://github.com/Xilinx/Vitis_Libraries/tree/master/vision}
+
+\bibitem{ref18}
+AMD, ``Vitis Vision API Reference: densePyrOpticalFlow,'' 2022. \url{https://docs.amd.com/r/en-US/Vitis_Libraries/vision/methods.html}
+
+\bibitem{ref19}
+Xilinx, ``Dense Pyramidal LK Optical Flow Benchmark,'' 2022. \url{https://github.com/Xilinx/Vitis_Libraries/tree/master/vision/examples}
+
+\bibitem{ref20}
+NVIDIA, ``DeepStream SDK Plugin: gst-nvof,'' \textit{NVIDIA Developer}, 2023. \url{https://developer.nvidia.com/optical-flow-sdk}
+
+\bibitem{ref21}
+NVIDIA Developer Blog, ``OpenCV Optical Flow Algorithms with NVIDIA Turing GPUs,'' 2019. \url{https://developer.nvidia.com/blog/opencv-optical-flow-algorithms-with-nvidia-turing-gpus/}
+
+\bibitem{ref22}
+NVIDIA, ``Optical Flow SDK Download,'' 2024. \url{https://developer.nvidia.com/optical-flow-sdk}
+
+\bibitem{ref23}
+NVIDIA Developer Blog, ``Harnessing the NVIDIA Ada Architecture for Frame Rate Up-Conversion in the NVIDIA Optical Flow SDK,'' 2023. \url{https://developer.nvidia.com/blog/harnessing-nvidia-ada-architecture-for-frame-rate-up-conversion/}
+
+\bibitem{ref24}
+NVIDIA, ``VPI --- Vision Programming Interface: Basic Concepts,'' 2023. \url{https://docs.nvidia.com/vpi/}
+
+\bibitem{ref25}
+R. Seznec et al., ``Real-Time Optical Flow Processing on Embedded GPU: a Hardware-Aware Algorithm to Implementation Strategy,'' \textit{Journal of Real-Time Image Processing}, 2022. \url{https://hal.science/hal-03457011/document}
+
+\bibitem{ref26}
+E. Carballo-Hernández et al., ``Heterogeneous Acceleration of CNN Inference on Embedded FPGA-GPU,'' \textit{Journal of Real-Time Image Processing}, 2021. \url{https://www.springer.com/journal/11554}
+
+\bibitem{ref27}
+L. Kong et al., ``FastFlowNet: A Lightweight Network for Fast Optical Flow Estimation,'' GitHub, 2021. \url{https://github.com/liyaguang/fastflownet}
+
+\bibitem{ref28}
+NVIDIA Developer Blog, ``Speed Up Inference with TensorRT,'' 2022. \url{https://developer.nvidia.com/blog/speed-up-inference-with-tensorrt/}
+
+\bibitem{ref29}
+OpenCV GitHub Issue \#6979 --- ``NEON optimizations for calcOpticalFlowPyrLK on ARM.'' \url{https://github.com/opencv/opencv/issues/6979}
+
+\bibitem{ref30}
+Unknown Author, ``ARM NEON Optical Flow Acceleration,'' \textit{CEUR Workshop Proceedings}, vol. 2588, Paper 37, 2020. \url{https://ceur-ws.org/Vol-2588/paper37.pdf}
+
+\bibitem{ref31}
+E. McCreath, ``Use of SIMD Vector Operations to Accelerate Application Code Performance on Low-Power ARM and Intel Platforms,'' ANU Technical Report, 2018. \url{https://comp.anu.edu.au/courses/comp3220/lectures/2018/}
+
+\bibitem{ref32}
+ARM Software (GitHub), ``ARM Compute Library --- OpticalFlowLK Issue \#216.'' \url{https://github.com/ARM-software/ComputeLibrary/issues/216}
+
+\bibitem{ref33}
+ResearchGate, ``FLIA: Fast Lightweight Image Analysis via Heterogeneous Embedded Computing,'' 2022. \url{https://www.researchgate.net/publication/362044128}
+
+\bibitem{ref34}
+A. Lacas et al., ``Optical Flow FPGA Co-processor for Drones,'' in \textit{Proc. ASAP 2023}, 2023. \url{https://hal.science/hal-04199828}
+
+\bibitem{ref35}
+P. Blachut and T. Kryjak, ``Real-time Optical Flow Estimation on FPGA for Traffic Surveillance,'' in \textit{Proc. DASIP}, 2018. \url{https://www.researchgate.net/publication/325306206}
+
+\bibitem{ref36}
+P. Blachut and T. Kryjak, ``Real-time LK and HS Optical Flow on FPGA at 4K Resolution,'' in \textit{Proc. ECCV 2022 Workshop}, 2022. \url{https://www.mdpi.com/1424-8220/22/13/5017}
+
+\bibitem{ref37}
+S. Jiang, D. Campbell, Y. Lu, H. Li, and R. Hartley, ``Learning to Estimate Hidden Motions with Global Motion Aggregation,'' arXiv:2104.02409, 2021. \url{https://arxiv.org/abs/2104.02409}
+
+\bibitem{ref38}
+J. Jeong et al., ``Embedded Systems Survey for Optical Flow,'' \textit{Electronics}, vol. 11, no. 22, p. 3756, 2022. \url{https://www.mdpi.com/2079-9292/11/22/3756}
+
+\bibitem{ref39}
+Arm Ltd., ``Coding for Neon,'' \textit{Arm Neon Programmer's Guide}, Issue 04, 2020. \url{https://developer.arm.com/architectures/learn-the-architecture/neon}
+
+\bibitem{ref40}
+B. D. Lucas and T. Kanade, ``An Iterative Image Registration Technique with an Application to Stereo Vision,'' \textit{Proc. IJCAI}, 1981. \url{https://www.cmu.edu/biolphys/dennis/notes/vision/lk.pdf}
+
+\end{thebibliography}
 
 \end{document}
