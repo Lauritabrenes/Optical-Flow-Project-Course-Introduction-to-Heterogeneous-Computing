@@ -19,6 +19,8 @@
  *                                   bright pixel (impulse) spreads to its
  *                                   neighbors and its peak is attenuated.
  *
+ * 
+ * 
  *  HOW TO BUILD & RUN
  *  ------------------
  *    Via CMake (from build/):   ctest --output-on-failure
