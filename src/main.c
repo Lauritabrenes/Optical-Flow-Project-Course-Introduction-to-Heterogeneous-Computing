@@ -39,6 +39,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include "of.h"
+#ifdef HAVE_CUDA
+#include "gpu_timing.h"
+#endif
 
 /* Resolucion de trabajo acordada por el equipo. Si los frames difieren
  * solo se advierte; no se detiene la ejecucion. */
@@ -57,10 +60,17 @@ typedef struct {
 static void print_usage(const char *prog)
 {
     fprintf(stderr,
+<<<<<<< Updated upstream
             "Uso: %s <frame1> <frame2> [salida] [--gt-shift DX DY]\n"
             "  salida            CSV de resultados (defecto: results/last_run.csv\n"
             "                    o ../results/last_run.csv si no existe results/)\n"
             "  --gt-shift DX DY  ground truth uniforme en pixeles (para EPE)\n",
+=======
+            "Uso: %s <frame1> <frame2> [salida] [--gt-shift DX DY] [--mode scalar|neon|cuda|cuda_opt|cuda_shared]\n"
+            "  salida            CSV de resultados (defecto: results/last_run.csv)\n"
+            "  --gt-shift DX DY  ground truth uniforme en pixeles (para EPE)\n"
+            "  --mode            Define el acelerador a usar (defecto: scalar)\n",
+>>>>>>> Stashed changes
             prog);
 }
 
@@ -230,7 +240,23 @@ int main(int argc, char **argv)
     }
     t_pre = now_ms() - t0;
 
+<<<<<<< Updated upstream
 /* [3] Lucas-Kanade Scalar vs NEON */
+=======
+    /* [2b] Warm-up GPU: crea el contexto CUDA FUERA de la region medida
+     *      para que LK_COMPUTE no incluya la inicializacion del driver. */
+#ifdef HAVE_CUDA
+    if (args.mode == MODE_CUDA || args.mode == MODE_CUDA_OPT ||
+        args.mode == MODE_CUDA_SHARED) {
+        if (of_gpu_warmup() != 0) {
+            fprintf(stderr, "Error: no se pudo inicializar CUDA\n");
+            goto cleanup;
+        }
+    }
+#endif
+
+    /* [3] Cómputo LK dirigido por flags */
+>>>>>>> Stashed changes
     t0 = now_ms();
     rc = of_lk_scalar(&pp1, &pp2, &flow);
     t_lk = now_ms() - t0;
@@ -297,6 +323,18 @@ int main(int argc, char **argv)
     printf("[3] LK_SCALAR   %10.3f ms\n", t_lk);
     printf("[4] SAVE        %10.3f ms\n", t_save);
     printf("TOTAL           %10.3f ms\n", t_load + t_pre + t_lk + t_save);
+
+    /* Desglose GPU (no coincide con el regex de profile.sh: ^\[[1-4]\]) */
+#ifdef HAVE_CUDA
+    if (args.mode == MODE_CUDA || args.mode == MODE_CUDA_OPT ||
+        args.mode == MODE_CUDA_SHARED) {
+        printf("[3a] GPU_ALLOC  %10.3f ms\n", g_gpu_timing.alloc_ms);
+        printf("[3b] GPU_H2D    %10.3f ms\n", g_gpu_timing.h2d_ms);
+        printf("[3c] GPU_KERNEL %10.3f ms\n", g_gpu_timing.kernel_ms);
+        printf("[3d] GPU_D2H    %10.3f ms\n", g_gpu_timing.d2h_ms);
+        printf("[3e] GPU_FREE   %10.3f ms\n", g_gpu_timing.free_ms);
+    }
+#endif
 
     status = 0;
 
