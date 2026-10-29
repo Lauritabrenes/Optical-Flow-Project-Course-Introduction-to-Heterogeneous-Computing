@@ -1,0 +1,41 @@
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda 100
+Perfilando en modo: cuda (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   114.048    111.611     13.914    107.755    246.116
+preprocess_ms            58.772     58.701      1.149     56.271     63.357
+lk_compute_ms           103.547    113.001     16.491     65.934    118.948
+save_ms                1043.899    995.167    121.609    946.041   1388.995
+total_ms               1320.266   1269.572    121.566   1191.381   1666.683
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda_shared.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda_shared.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   112.121    111.100      4.033    107.452    122.174
+preprocess_ms            59.009     58.725      1.420     56.677     65.341
+lk_compute_ms            91.983     99.689     14.897     58.164    111.199
+save_ms                1079.983   1006.670    182.908    935.208   1957.150
+total_ms               1343.096   1268.118    182.722   1175.563   2230.900
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ./test_cuda_correctness
+Frames sinteticos 640x480 (dx=1.0, dy=0.5)
+[PASS] cuda         max_err=2.265e-06  mean_err=5.883e-08  pix_fuera_tol=0 (0.0000 %)
+[PASS] cuda_opt     max_err=2.265e-06  mean_err=5.883e-08  pix_fuera_tol=0 (0.0000 %)
+[PASS] cuda_shared  max_err=2.265e-06  mean_err=5.883e-08  pix_fuera_tol=0 (0.0000 %)
+[PASS] neon         max_err=8.255e-06  mean_err=1.329e-07  pix_fuera_tol=0 (0.0000 %)
+
+RESULTADO: todas las pruebas pasaron
+el5859@jetson-182:~/Proyecto final/build$ 
