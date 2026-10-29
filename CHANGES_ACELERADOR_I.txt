@@ -1,0 +1,43 @@
+CHANGES - Prototipo en Acelerador I (GPU timing + CUDA error checks + correctness)
+==================================================================================
+This folder is the FULL project with all edits already applied.
+It has NOT been compiled (no CUDA on Windows): build and test it on the Jetson.
+
+NEW FILES
+  include/cuda_check.h            CUDA_CHECK macro (prints file:line, returns -3)
+  include/gpu_timing.h            OFGpuTiming struct, g_gpu_timing, of_gpu_warmup()
+  src/gpu_timing.cu               g_gpu_timing definition + CUDA context warm-up
+  tests/test_cuda_correctness.c   GPU (cuda/cuda_opt/cuda_shared) + NEON vs scalar
+  scripts/profile_gpu.sh          100-run profiling with 5 extra GPU columns
+  CHANGES_ACELERADOR_I.txt        this file
+
+MODIFIED FILES
+  src/lk_cuda.cu         host function: error checks on every CUDA call,
+  src/lk_cuda_opt.cu     cudaEvent timing (alloc/H2D/kernel/D2H/free),
+  src/lk_cuda_shared.cu  memory always freed (goto fail). KERNELS UNCHANGED.
+  src/main.c             + include gpu_timing.h
+                         + of_gpu_warmup() before stage [3] (context not timed)
+                         + prints [3a]..[3e] GPU lines after TOTAL
+                         + usage text lists all modes
+  CMakeLists.txt         + src/gpu_timing.cu in CUDA_SOURCES
+                         + test_cuda_correctness target
+
+UNCHANGED: include/of.h (team rule), all CPU sources, profile.sh, analyze.py.
+
+BUILD AND RUN (Jetson)
+  cd ~/"Proyecto final"
+  sed -i 's/\r$//' scripts/*.sh && chmod +x scripts/*.sh   # if edited on Windows
+  rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
+  ./test_cuda_correctness
+  ./test_cuda_correctness ../data/frames/frame_000001.png ../data/frames/frame_000002.png
+  ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png --mode cuda
+  for m in cuda cuda_opt cuda_shared; do ../scripts/profile_gpu.sh ./bench_main \
+    ../data/frames/frame_000001.png ../data/frames/frame_000002.png $m 100; done
+  for m in scalar neon cuda cuda_opt cuda_shared; do ../scripts/profile.sh ./bench_main \
+    ../data/frames/frame_000001.png ../data/frames/frame_000002.png $m 100; done
+
+NOTES
+  - LK_COMPUTE now EXCLUDES CUDA context creation; say so in the paper.
+  - results/profiling/times_cuda_shared.csv still has 1 row: regenerate it (100 runs).
+  - Still to do for the deliverable: 1-min demo video, README Jetson section,
+    next-steps section, paper Accelerator section.

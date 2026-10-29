@@ -19,10 +19,28 @@ endif()
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+<<<<<<< Updated upstream
 include_directories(
     include
     third_party
 )
+=======
+include_directories(include third_party)
+
+# Verificacion y Soporte CUDA (Jetson Nano)
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 11)
+    add_definitions(-DHAVE_CUDA)
+    set(CUDA_SOURCES src/lk_cuda.cu src/lk_cuda_opt.cu src/lk_cuda_shared.cu src/gpu_timing.cu)
+    message(STATUS "CUDA detectado. Compilando Acelerador GPU.")
+else()
+    message(STATUS "CUDA no detectado. Omitiendo lk_cuda.cu.")
+    set(CUDA_SOURCES "")
+endif()
+>>>>>>> Stashed changes
 
 add_executable(bench_main
     src/main.c
@@ -62,4 +80,14 @@ add_executable(test_metrics
 
 if(NOT MSVC)
     target_link_libraries(test_metrics PRIVATE m)
+endif()
+
+# Prueba de correctitud GPU vs referencia escalar
+if(CMAKE_CUDA_COMPILER)
+    add_executable(test_cuda_correctness
+        tests/test_cuda_correctness.c
+        src/io.c src/preprocess.c src/lk_scalar.c src/lk_neon.c
+        ${CUDA_SOURCES})
+    set_target_properties(test_cuda_correctness PROPERTIES LINKER_LANGUAGE CUDA)
+    target_link_libraries(test_cuda_correctness PRIVATE m)
 endif()
