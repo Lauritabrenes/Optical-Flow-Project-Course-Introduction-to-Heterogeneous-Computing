@@ -1,0 +1,868 @@
+roussel@desk:~/Desktop/Proyecto final/build$ make -j$(nproc)
+[ 46%] Built target test_metrics
+[ 46%] Built target test_io
+[ 53%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 61%] Linking C executable bench_main
+[100%] Built target bench_main
+roussel@desk:~/Desktop/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png neon 10
+Perfilando en modo: neon (10 corridas)...
+Perfilado completo: ../results/profiling/times_neon.csv (10/10 muestras validas)
+roussel@desk:~/Desktop/Proyecto final/build$ make -j$(nproc)
+[ 38%] Built target test_io
+[ 46%] Built target test_metrics
+[100%] Built target bench_main
+roussel@desk:~/Desktop/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png neon 10
+Perfilando en modo: neon (10 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_neon.csv (10/10 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 10 (Archivo: times_neon.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                    20.741     20.378      1.255     20.239     24.308
+preprocess_ms             5.577      5.576      0.101      5.409      5.784
+lk_compute_ms            45.290     45.302      0.268     44.839     45.645
+save_ms                 109.667    109.407      1.221    108.143    111.745
+total_ms                181.276    180.486      2.412    179.115    187.304
+======================================================
+roussel@desk:~/Desktop/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png neon 100
+Perfilando en modo: neon (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_neon.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_neon.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                    20.198     20.204      0.176     19.972     20.862
+preprocess_ms             5.449      5.425      0.109      5.320      5.807
+lk_compute_ms            45.166     45.073      0.498     44.650     49.466
+save_ms                 110.005    109.460      2.494    107.502    125.041
+total_ms                180.818    180.165      2.927    177.899    200.393
+======================================================
+roussel@desk:~/Desktop/Proyecto final/build$ rm -rf build CMakeCache.txt CMakeFiles
+roussel@desk:~/Desktop/Proyecto final/build$ mkdir build
+roussel@desk:~/Desktop/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 15.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - NOTFOUND
+-- CUDA no detectado. Omitiendo lk_cuda.cu.
+-- Configuring done (0.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/roussel/Desktop/Proyecto final/build
+roussel@desk:~/Desktop/Proyecto final/build$ cd ..
+roussel@desk:~/Desktop/Proyecto final$ git status
+On branch Developers
+Your branch is ahead of 'origin/Developers' by 13 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   CMakeLists.txt
+        modified:   README.md
+        modified:   include/of.h
+        modified:   results/last_run.csv
+        modified:   scripts/analyze.py
+        modified:   scripts/profile.sh
+        modified:   src/lk_neon.c
+        modified:   src/main.c
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        results/profiling/times_neon.csv
+        results/profiling/times_scalar.csv
+        src/lk_cuda.cu
+
+no changes added to commit (use "git add" and/or "git commit -a")
+roussel@desk:~/Desktop/Proyecto final$ git fetch origin
+roussel@desk:~/Desktop/Proyecto final$ git checkout -b George
+Switched to a new branch 'George'
+roussel@desk:~/Desktop/Proyecto final$ git add .
+roussel@desk:~/Desktop/Proyecto final$ git commit -m "feat: add CUDA acelerator and execution modo selector(prototype)"
+[George c457918] feat: add CUDA acelerator and execution modo selector(prototype)
+ 11 files changed, 446181 insertions(+), 3522 deletions(-)
+ create mode 100644 results/profiling/times_neon.csv
+ create mode 100644 results/profiling/times_scalar.csv
+ create mode 100644 src/lk_cuda.cu
+roussel@desk:~/Desktop/Proyecto final$ git push -u origin George
+Enumerating objects: 32, done.
+Counting objects: 100% (32/32), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (17/17), done.
+Writing objects: 100% (18/18), 2.56 MiB | 1.09 MiB/s, done.
+Total 18 (delta 7), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (7/7), completed with 7 local objects.
+remote: 
+remote: Create a pull request for 'George' on GitHub by visiting:
+remote:      https://github.com/Lauritabrenes/Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing/pull/new/George
+remote: 
+To https://github.com/Lauritabrenes/Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing.git
+ * [new branch]      George -> George
+branch 'George' set up to track 'origin/George'.
+roussel@desk:~/Desktop/Proyecto final$ git branch
+git status
+git log --oneline -n 5
+  Developers
+* George
+  main
+On branch George
+Your branch is up to date with 'origin/George'.
+
+nothing to commit, working tree clean
+c457918 (HEAD -> George, origin/George) feat: add CUDA acelerator and execution modo selector(prototype)
+64715f3 (origin/main, origin/HEAD, Developers) Add video demonstration section to README
+56075e9 Update README with project details and performance metrics
+ee2c95f Add files via upload
+8cc7867 2nd log add
+roussel@desk:~/Desktop/Proyecto final$ git diff --stat
+roussel@desk:~/Desktop/Proyecto final$ 
+ *  History restored 
+
+roussel@desk:~/Desktop/Proyecto final$ cd ~/Desktop/"Proyecto final"
+
+rsync -avz --delete \
+  --exclude 'build' --exclude '.git' --exclude 'results' \
+  -e "ssh -J el5859@51.161.8.220:9222" \
+  . el5859@192.168.0.182:~/"Proyecto final"
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+el5859@192.168.0.182's password: 
+sending incremental file list
+created directory /home/el5859/Proyecto final
+./
+.gitignore
+CMakeLists.txt
+LICENSE
+ONBOARDING.md
+Proyecto final.code-workspace
+Proyecto___Computación_Heterogénea.pdf
+README.md
+Rodrigo interaction log.md
+Video etapa Prototipo en C.mp4
+test.ppm
+toolchain-aarch64.cmake
+Advance 1/
+Advance 1/Comparative Acceleration of Optical Flow Estimation on Heterogeneous Embedded Platforms: FPGA vs. Embedded GP.md
+Advance 1/Comparative_Acceleration_of_Optical_Flow_Estimation_on_Heterogeneous_Embedded_Platforms__FPGA_vs__Embedded_GPU (1).pdf
+Advance 1/log.txt
+data/
+data/frame1.ppm
+data/frame2.ppm
+data/frames/
+data/frames/frame_000001.png
+data/frames/frame_000002.png
+data/frames/frame_0001.flo
+data/frames/frame_0002.flo
+docs/
+docs/Marlon_ai_interaction_log.md
+docs/decisions.md
+include/
+include/of.h
+scripts/
+scripts/analyze.py
+scripts/profile.sh
+src/
+src/io.c
+src/lk_cuda.cu
+src/lk_neon.c
+src/lk_scalar.c
+src/main.c
+src/metrics.c
+src/preprocess.c
+tests/
+tests/test_io.c
+tests/test_metrics.c
+tests/test_preprocess.c
+third_party/
+third_party/stb_image.h
+
+sent 11,080,979 bytes  received 817 bytes  515,432.37 bytes/sec
+total size is 12,650,783  speedup is 1.14
+roussel@desk:~/Desktop/Proyecto final$ ssh -J el5859@51.161.8.220:9222 el5859@192.168.0.182
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+el5859@192.168.0.182's password: 
+Permission denied, please try again.
+el5859@192.168.0.182's password: 
+Welcome to Ubuntu 18.04.6 LTS (GNU/Linux 4.9.253-tegra aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+This system has been minimized by removing packages and content that are
+not required on a system that users do not log into.
+
+To restore this content, you can run the 'unminimize' command.
+
+337 updates can be applied immediately.
+283 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+Last login: Tue Oct 27 22:54:05 2026 from 192.168.0.80
+el5859@jetson-182:~$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ mkdir -p results/profiling
+el5859@jetson-182:~/Proyecto final$ rm -rf build && mkdir build && cd build
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+CMake Error at CMakeLists.txt:1 (cmake_minimum_required):
+  CMake 3.16 or higher is required.  You are running version 3.10.2
+
+
+-- Configuring incomplete, errors occurred!
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+make: *** No targets specified and no makefile found.  Stop.
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ sed -i 's/VERSION 3.16/VERSION 3.10/g' CMakeLists.txt
+el5859@jetson-182:~/Proyecto final$ cd build
+el5859@jetson-182:~/Proyecto final/build$ rm -rf *
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  6%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 13%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 20%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 26%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 33%] Linking C executable test_metrics
+[ 33%] Built target test_metrics
+[ 40%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+[ 46%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+Scanning dependencies of target test_io
+[ 53%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 60%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 66%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 73%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 80%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+nvcc fatal   : redefinition of argument 'optimize'
+CMakeFiles/bench_main.dir/build.make:206: recipe for target 'CMakeFiles/bench_main.dir/src/lk_cuda.cu.o' failed
+make[2]: *** [CMakeFiles/bench_main.dir/src/lk_cuda.cu.o] Error 1
+CMakeFiles/Makefile2:104: recipe for target 'CMakeFiles/bench_main.dir/all' failed
+make[1]: *** [CMakeFiles/bench_main.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[ 86%] Linking C executable test_io
+[ 86%] Built target test_io
+Makefile:83: recipe for target 'all' failed
+make: *** [all] Error 2
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ sed -i 's/add_compile_options(-O3 -march=armv8-a+simd)/set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a+simd")/g' CMakeLists.txt
+el5859@jetson-182:~/Proyecto final$ cd build
+el5859@jetson-182:~/Proyecto final/build$ rm -rf *
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  6%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 13%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 20%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 26%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 33%] Linking C executable test_metrics
+[ 33%] Built target test_metrics
+[ 40%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+Scanning dependencies of target test_io
+[ 46%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 53%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 60%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 66%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 73%] Linking C executable test_io
+[ 73%] Built target test_io
+[ 80%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 86%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 93%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda 100
+Perfilando en modo: cuda (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   112.029    110.316      4.183    107.232    123.451
+preprocess_ms            58.549     58.384      1.494     56.225     64.829
+lk_compute_ms           224.635    222.782     30.381    181.968    500.085
+save_ms                1011.138    967.423    106.049    938.318   1356.419
+total_ms               1406.350   1363.004    104.905   1309.267   1715.220
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png scalar 100
+Perfilando en modo: scalar (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_scalar.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_scalar.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   113.074    113.585      4.513    107.096    120.074
+preprocess_ms            58.967     58.888      1.382     55.105     62.541
+lk_compute_ms           277.616    283.923     36.637    226.913    329.215
+save_ms                 996.017    962.833     85.818    935.429   1269.327
+total_ms               1445.674   1430.495     92.022   1344.576   1727.427
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png neon 100
+Perfilando en modo: neon (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_neon.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_neon.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   113.016    113.002      4.505    106.718    120.577
+preprocess_ms            57.800     57.676      1.585     54.705     65.966
+lk_compute_ms           111.759    115.068     16.360     93.146    143.288
+save_ms                1041.095    967.355    158.923    931.370   1466.831
+total_ms               1323.670   1255.476    155.306   1198.505   1730.041
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  6%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 12%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 18%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 25%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 31%] Linking C executable test_metrics
+[ 31%] Built target test_metrics
+[ 37%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+Scanning dependencies of target test_io
+[ 43%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 50%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 56%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 62%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 68%] Linking C executable test_io
+[ 68%] Built target test_io
+[ 75%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 81%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 87%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 93%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_opt 100
+Perfilando en modo: cuda_opt (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda_opt.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda_opt.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   111.427    110.200      3.714    107.348    119.413
+preprocess_ms            54.611     54.349      1.028     53.389     58.188
+lk_compute_ms           238.416    241.596     29.999    180.100    469.494
+save_ms                1031.384    981.048    108.240    940.488   1353.130
+total_ms               1435.838   1391.198    103.221   1312.294   1711.670
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda_shared.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda_shared.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   112.167    110.601      4.592    107.087    122.230
+preprocess_ms            55.100     54.575      1.252     53.425     58.624
+lk_compute_ms           236.205    236.291      5.730    223.366    249.627
+save_ms                1044.594    983.901    143.394    934.388   1687.628
+total_ms               1448.066   1387.758    143.625   1321.939   2081.982
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ mkdir -p results/profiling
+el5859@jetson-182:~/Proyecto final$ rm -rf build && mkdir build && cd build
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+/home/el5859/Proyecto final/src/main.c: In function ‘parse_args’:
+/home/el5859/Proyecto final/src/main.c:76:71: error: ‘MODE_CUDA_SHARED’ undeclared (first use in this function); did you mean ‘MODE_CUDA_OPT’?
+             else if (strcmp(argv[i+1], "cuda_shared") == 0) a->mode = MODE_CUDA_SHARED;
+                                                                       ^~~~~~~~~~~~~~~~
+                                                                       MODE_CUDA_OPT
+/home/el5859/Proyecto final/src/main.c:76:71: note: each undeclared identifier is reported only once for each function it appears in
+/home/el5859/Proyecto final/src/main.c: In function ‘main’:
+/home/el5859/Proyecto final/src/main.c:221:29: error: ‘MODE_CUDA_SHARED’ undeclared (first use in this function); did you mean ‘MODE_CUDA_OPT’?
+     } else if (args.mode == MODE_CUDA_SHARED) {
+                             ^~~~~~~~~~~~~~~~
+                             MODE_CUDA_OPT
+CMakeFiles/bench_main.dir/build.make:62: recipe for target 'CMakeFiles/bench_main.dir/src/main.c.o' failed
+make[2]: *** [CMakeFiles/bench_main.dir/src/main.c.o] Error 1
+CMakeFiles/Makefile2:104: recipe for target 'CMakeFiles/bench_main.dir/all' failed
+make[1]: *** [CMakeFiles/bench_main.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Linking C executable test_metrics
+[ 23%] Built target test_metrics
+Makefile:83: recipe for target 'all' failed
+make: *** [all] Error 2
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ mkdir -p results/profiling
+el5859@jetson-182:~/Proyecto final$ rm -rf build && mkdir build && cd build
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 29%] Linking C executable test_metrics
+[ 29%] Built target test_metrics
+[ 35%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+Scanning dependencies of target test_io
+[ 41%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 47%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 52%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 58%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 64%] Linking C executable test_io
+[ 64%] Built target test_io
+[ 70%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 76%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 82%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 88%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+[ 94%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o: In function `of_lk_cuda_opt':
+tmpxft_00006657_00000000-5_lk_cuda_shared.cudafe1.cpp:(.text+0x110): multiple definition of `of_lk_cuda_opt'
+CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o:tmpxft_00006631_00000000-5_lk_cuda_opt.cudafe1.cpp:(.text+0x110): first defined here
+CMakeFiles/bench_main.dir/src/main.c.o: In function `main':
+main.c:(.text.startup+0x798): undefined reference to `of_lk_cuda_shared'
+collect2: error: ld returned 1 exit status
+CMakeFiles/bench_main.dir/build.make:337: recipe for target 'bench_main' failed
+make[2]: *** [bench_main] Error 1
+CMakeFiles/Makefile2:104: recipe for target 'CMakeFiles/bench_main.dir/all' failed
+make[1]: *** [CMakeFiles/bench_main.dir/all] Error 2
+Makefile:83: recipe for target 'all' failed
+make: *** [all] Error 2
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ mkdir -p results/profiling
+el5859@jetson-182:~/Proyecto final$ rm -rf build && mkdir build && cd build
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 29%] Linking C executable test_metrics
+[ 29%] Built target test_metrics
+[ 35%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+Scanning dependencies of target test_io
+[ 41%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 47%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 52%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 58%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 64%] Linking C executable test_io
+[ 64%] Built target test_io
+[ 70%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 76%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 82%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 88%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+[ 94%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+WARN: run 1 sin salida valida del binario (se omite)
+WARN: run 2 sin salida valida del binario (se omite)
+WARN: run 3 sin salida valida del binario (se omite)
+WARN: run 4 sin salida valida del binario (se omite)
+WARN: run 5 sin salida valida del binario (se omite)
+WARN: run 6 sin salida valida del binario (se omite)
+WARN: run 7 sin salida valida del binario (se omite)
+WARN: run 8 sin salida valida del binario (se omite)
+WARN: run 9 sin salida valida del binario (se omite)
+WARN: run 10 sin salida valida del binario (se omite)
+WARN: run 11 sin salida valida del binario (se omite)
+WARN: run 12 sin salida valida del binario (se omite)
+WARN: run 13 sin salida valida del binario (se omite)
+WARN: run 14 sin salida valida del binario (se omite)
+WARN: run 15 sin salida valida del binario (se omite)
+WARN: run 16 sin salida valida del binario (se omite)
+WARN: run 17 sin salida valida del binario (se omite)
+WARN: run 18 sin salida valida del binario (se omite)
+WARN: run 19 sin salida valida del binario (se omite)
+WARN: run 20 sin salida valida del binario (se omite)
+WARN: run 21 sin salida valida del binario (se omite)
+^C
+el5859@jetson-182:~/Proyecto final/build$ ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png --mode cuda_shared
+Error en calculo de optical flow (-2)
+el5859@jetson-182:~/Proyecto final/build$ ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png --mode cuda_opt
+
+Resolucion procesada: 1024x436
+Flujo: pixeles con solucion = 313568 de 446464 (70.2 %)
+Flujo: promedio (u, v) = (-0.9336, 0.1375), magnitud maxima = 135.3723 px
+Guardado exitoso en ../results/last_run.csv
+
+[1] IO             108.247 ms
+[2] PREPROCESS      58.323 ms
+[3] LK_COMPUTE     260.080 ms
+[4] SAVE           962.641 ms
+TOTAL             1389.291 ms
+el5859@jetson-182:~/Proyecto final/build$ cd build
+-bash: cd: build: No such file or directory
+el5859@jetson-182:~/Proyecto final/build$ rm -rf *
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 29%] Linking C executable test_metrics
+[ 29%] Built target test_metrics
+[ 35%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+Scanning dependencies of target test_io
+[ 41%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 47%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 52%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 58%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 64%] Linking C executable test_io
+[ 64%] Built target test_io
+[ 70%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 76%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 82%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 88%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+[ 94%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+WARN: run 1 sin salida valida del binario (se omite)
+WARN: run 2 sin salida valida del binario (se omite)
+WARN: run 3 sin salida valida del binario (se omite)
+WARN: run 4 sin salida valida del binario (se omite)
+WARN: run 5 sin salida valida del binario (se omite)
+WARN: run 6 sin salida valida del binario (se omite)
+WARN: run 7 sin salida valida del binario (se omite)
+WARN: run 8 sin salida valida del binario (se omite)
+WARN: run 9 sin salida valida del binario (se omite)
+WARN: run 10 sin salida valida del binario (se omite)
+WARN: run 11 sin salida valida del binario (se omite)
+WARN: run 12 sin salida valida del binario (se omite)
+WARN: run 13 sin salida valida del binario (se omite)
+WARN: run 14 sin salida valida del binario (se omite)
+WARN: run 15 sin salida valida del binario (se omite)
+^C
+el5859@jetson-182:~/Proyecto final/build$ ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png --mode cuda_shared
+Error en cudaHostRegister
+Error en calculo de optical flow (-2)
+el5859@jetson-182:~/Proyecto final/build$ cd ~/"Proyecto final"
+el5859@jetson-182:~/Proyecto final$ mkdir -p results/profiling
+el5859@jetson-182:~/Proyecto final$ rm -rf build && mkdir build && cd build
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 29%] Linking C executable test_metrics
+[ 29%] Built target test_metrics
+[ 35%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+[ 41%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 47%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 52%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 58%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 64%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 70%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+Scanning dependencies of target test_io
+[ 76%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 82%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 88%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[ 94%] Linking CUDA executable bench_main
+[ 94%] Built target bench_main
+[100%] Linking C executable test_io
+[100%] Built target test_io
+el5859@jetson-182:~/Proyecto final/build$ ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png --mode cuda_shared
+Error en cudaHostRegister
+Error en calculo de optical flow (-2)
+el5859@jetson-182:~/Proyecto final/build$ cd build
+-bash: cd: build: No such file or directory
+el5859@jetson-182:~/Proyecto final/build$ rm -rf *
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- The C compiler identification is GNU 7.5.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-10/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 10.2.300
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc
+-- Check for working CUDA compiler: /usr/local/cuda-10/bin/nvcc -- works
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target test_metrics
+Scanning dependencies of target bench_main
+[  5%] Building C object CMakeFiles/test_metrics.dir/tests/test_metrics.c.o
+[ 11%] Building C object CMakeFiles/bench_main.dir/src/main.c.o
+[ 17%] Building C object CMakeFiles/test_metrics.dir/src/metrics.c.o
+[ 23%] Building C object CMakeFiles/bench_main.dir/src/io.c.o
+[ 29%] Linking C executable test_metrics
+[ 29%] Built target test_metrics
+Scanning dependencies of target test_io
+[ 35%] Building C object CMakeFiles/test_io.dir/tests/test_io.c.o
+[ 41%] Building C object CMakeFiles/test_io.dir/src/io.c.o
+[ 47%] Building C object CMakeFiles/bench_main.dir/src/preprocess.c.o
+[ 52%] Building C object CMakeFiles/bench_main.dir/src/lk_scalar.c.o
+[ 58%] Linking C executable test_io
+[ 58%] Built target test_io
+[ 64%] Building C object CMakeFiles/bench_main.dir/src/lk_neon.c.o
+[ 70%] Building C object CMakeFiles/bench_main.dir/src/metrics.c.o
+[ 76%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda.cu.o
+[ 82%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_opt.cu.o
+[ 88%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+[ 94%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[100%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+WARN: run 1 sin salida valida del binario (se omite)
+WARN: run 2 sin salida valida del binario (se omite)
+WARN: run 3 sin salida valida del binario (se omite)
+WARN: run 4 sin salida valida del binario (se omite)
+WARN: run 5 sin salida valida del binario (se omite)
+WARN: run 6 sin salida valida del binario (se omite)
+WARN: run 7 sin salida valida del binario (se omite)
+WARN: run 8 sin salida valida del binario (se omite)
+WARN: run 9 sin salida valida del binario (se omite)
+WARN: run 10 sin salida valida del binario (se omite)
+WARN: run 11 sin salida valida del binario (se omite)
+WARN: run 12 sin salida valida del binario (se omite)
+WARN: run 13 sin salida valida del binario (se omite)
+WARN: run 14 sin salida valida del binario (se omite)
+WARN: run 15 sin salida valida del binario (se omite)
+WARN: run 16 sin salida valida del binario (se omite)
+WARN: run 17 sin salida valida del binario (se omite)
+^C
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+WARN: run 1 sin salida valida del binario (se omite)
+WARN: run 2 sin salida valida del binario (se omite)
+WARN: run 3 sin salida valida del binario (se omite)
+WARN: run 4 sin salida valida del binario (se omite)
+WARN: run 5 sin salida valida del binario (se omite)
+WARN: run 6 sin salida valida del binario (se omite)
+WARN: run 7 sin salida valida del binario (se omite)
+WARN: run 8 sin salida valida del binario (se omite)
+WARN: run 9 sin salida valida del binario (se omite)
+WARN: run 10 sin salida valida del binario (se omite)
+WARN: run 11 sin salida valida del binario (se omite)
+WARN: run 12 sin salida valida del binario (se omite)
+WARN: run 13 sin salida valida del binario (se omite)
+WARN: run 14 sin salida valida del binario (se omite)
+WARN: run 15 sin salida valida del binario (se omite)
+WARN: run 16 sin salida valida del binario (se omite)
+WARN: run 17 sin salida valida del binario (se omite)
+WARN: run 18 sin salida valida del binario (se omite)
+WARN: run 19 sin salida valida del binario (se omite)
+WARN: run 20 sin salida valida del binario (se omite)
+WARN: run 21 sin salida valida del binario (se omite)
+^C
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+WARN: run 1 sin salida valida del binario (se omite)
+WARN: run 2 sin salida valida del binario (se omite)
+WARN: run 3 sin salida valida del binario (se omite)
+WARN: run 4 sin salida valida del binario (se omite)
+WARN: run 5 sin salida valida del binario (se omite)
+WARN: run 6 sin salida valida del binario (se omite)
+WARN: run 7 sin salida valida del binario (se omite)
+^C
+el5859@jetson-182:~/Proyecto final/build$ cmake ..
+-- CUDA detectado. Compilando Acelerador GPU.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/el5859/Proyecto final/build
+el5859@jetson-182:~/Proyecto final/build$ make -j$(nproc)
+Scanning dependencies of target bench_main
+[ 17%] Built target test_metrics
+[ 23%] Building CUDA object CMakeFiles/bench_main.dir/src/lk_cuda_shared.cu.o
+[ 41%] Built target test_io
+[ 47%] Linking CUDA device code CMakeFiles/bench_main.dir/cmake_device_link.o
+[ 52%] Linking CUDA executable bench_main
+[100%] Built target bench_main
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
+Perfilando en modo: cuda_shared (100 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda_shared.csv (100/100 muestras validas)
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 100 (Archivo: times_cuda_shared.csv)
+
+Etapa                     Media    Mediana        Std        Min        Max
+------------------------------------------------------------------------
+io_ms                   110.350    109.149      3.890    106.357    120.852
+preprocess_ms            56.553     56.398      1.174     54.625     60.519
+lk_compute_ms           211.647    211.377     29.765    169.823    481.381
+save_ms                1044.198    988.321    124.321    944.557   1397.887
+total_ms               1422.748   1362.662    124.256   1283.356   1763.665
+======================================================
+el5859@jetson-182:~/Proyecto final/build$ ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 1
+Perfilando en modo: cuda_shared (1 corridas)...
+Ejecutando muestras...
+Perfilado completo. Archivo guardado en: ../results/profiling/times_cuda_shared.csv (1/1 muestras validas)
