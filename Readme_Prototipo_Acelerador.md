@@ -1269,4 +1269,4 @@ La separación clara entre baseline, optimización y aceleradores permite manten
 
 ### Demostración del Proyecto
 
-<video src="./assets/Video_Prototipo.mp4" controls width="100%"></video>
+<video src="Video_Prototipo.mp4" controls width="100%"></video>
