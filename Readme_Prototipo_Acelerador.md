@@ -1265,3 +1265,8 @@ permite medir cada etapa de forma independiente y facilita la identificación de
 El perfilado realizado sobre el baseline muestra que **Lucas–Kanade concentra la mayor parte del tiempo de cómputo**. Esto justifica la optimización SIMD mediante ARM NEON y posteriormente la descarga del mismo núcleo hacia otros aceleradores.
 
 La separación clara entre baseline, optimización y aceleradores permite mantener una referencia común de correctitud y comparar de forma reproducible el rendimiento de las diferentes plataformas.
+
+
+### Demostración del Proyecto
+
+<video src="./assets/Video_Prototipo.mp4" controls width="100%"></video>
