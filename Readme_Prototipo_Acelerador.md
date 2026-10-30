@@ -1269,4 +1269,4 @@ La separación clara entre baseline, optimización y aceleradores permite manten
 
 ### Demostración del Proyecto
 
-<video src="Video_Prototipo.mp4" controls width="100%"></video>
+https://github.com/Lauritabrenes/Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing/blob/main/Video_Prototipo.mp4?raw=true
