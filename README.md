@@ -16,8 +16,6 @@ Students:
 
   Rodrigo Venegas Mora	           rovenegas@estudiantec.cr
 
-# Prototipo en C
-Estructura del workspace
 ```text
 Proyecto final/
 ├── CMakeLists.txt          # Configuración de compilación (flags -O3 y -march=armv8-a+simd)
@@ -37,22 +35,17 @@ Proyecto final/
 └── results/profiling/      # Archivos CSV con los datos crudos del perfilado
 ```
 ---
-## Arquitectura del Pipeline
-El procesamiento en 4 etapas secuenciales. El orquestador (`main.c`) asigna la memoria una única vez para aislar el tiempo neto de cómputo en los kernels:
-1. **I/O (`io.c`):** Carga de fotogramas RGB y conversión a escala de grises.
-2. **Preprocesamiento (`preprocess.c`):** Normalización a `[0,1]` y filtrado Gaussiano separable.
-3. **Cálculo (`lk_scalar.c` / `lk_neon.c`):** Extracción de gradientes espaciotemporales y cálculo del flujo.
-4. **Métricas (`metrics.c`):** Evaluación del End-Point Error (EPE) y serialización de datos.
-   
-## 1. Optimización Acelerada (ARM NEON)
+
+## 3. Optimización Acelerada (ARM NEON)
 
 ### Planteamiento Técnico
 El algoritmo de Lucas-Kanade calcula las derivadas parciales de imagen (Ix, Iy, It) y resuelve el sistema de ecuaciones 2x2 para cada ventana local alrededor de un píxel.
 
 - **Versión Escalar (`lk_scalar.c`):** Opera un píxel a la vez mediante instrucciones **SISD**.
 - **Versión Vectorial (`lk_neon.c`):** Utiliza registros de 128 bits (`float32x4_t`) mediante la librería `<arm_neon.h>` para procesar **4 píxeles en paralelo por ciclo de reloj**, acelerando la acumulación del Tensor de Estructura (ΣIx², ΣIy², ΣIxIy).
+---
 
-## 2. Resultados de Rendimiento en Kria KV260
+## 4. Resultados de Rendimiento en Kria KV260
 
 Evaluando el par de frames reales de prueba (`1024x436` píxeles):
 
@@ -64,8 +57,31 @@ Evaluando el par de frames reales de prueba (`1024x436` píxeles):
 | **Píxeles Válidos Resueltos** | 70.2\% | 70.2\% | Identidad funcional comprobada |
 
 > **Conclusión del Benchmark:** La vectorización SIMD con ARM NEON reduce el tiempo de cómputo del algoritmo en **$\sim 60\%$**, logrando un **Speedup de $2.48\times$** sobre la CPU de la Kria KV260.
+---
+# Reporte de Optimizaciones - Prototipo en C
 
-## 3. Guía de Despliegue Rápido (Cheat Sheet)
+Este documento detalla las estrategias de optimización evaluadas y aplicadas en la implementación base en C del algoritmo de flujo óptico de Lucas-Kanade, cumpliendo con los requisitos de la evaluación del curso.
+
+## 1. Optimizaciones Aplicadas
+
+*   **Opciones del Compilador:** Se configuró CMake (`CMakeLists.txt`) para forzar el modo `Release` (equivalente a `-O3`), habilitando el desenrollado de bucles agresivo y la vectorización automática del compilador GCC. Adicionalmente, para arquitecturas ARM, se inyectó la bandera `-march=armv8-a+simd` para habilitar el conjunto de instrucciones NEON.
+*   **Paralelismo a Nivel de Datos (SIMD):** Se aplicó vectorización explícita en `src/lk_neon.c`. Se utilizaron intrínsecas de ARM (`float32x4_t`, `vmlaq_f32`) para procesar 4 píxeles simultáneamente durante el cálculo de gradientes y la acumulación del Tensor de Estructura, logrando un speedup de ~2.48x sobre la Kria KV260.
+*   **Ordenamiento de Datos (Separabilidad):** En la etapa de preprocesamiento (`src/preprocess.c`), el filtro Gaussiano 2D se implementó como dos pasadas ortogonales 1D (convolución separable). Esto reduce la complejidad de accesos a memoria de $O(K^2)$ a $O(2K)$ por píxel.
+*   **Gestión Estática de Memoria:** Se eliminó la asignación dinámica (`malloc`/`free`) dentro de los bucles de cómputo. El orquestador (`main.c`) reserva todos los búferes (`OFImage`, `OFFlow`) una única vez y los reutiliza, reduciendo la fragmentación y los fallos de caché.
+
+## 2. Optimizaciones Evaluadas y No Aplicadas (Con Justificación)
+
+*   **Paralelismo a Nivel de Tareas (Multithreading CPU / OpenMP):** *No aplicado.* El algoritmo de Lucas-Kanade (al ser estrictamente local) es inherentemente paralelo por píxel. Distribuir este trabajo en los 4 hilos de la CPU (Cortex-A53 o Cortex-A57) mediante OpenMP introduciría sobrecarga de sincronización de contexto. Además, dado que el objetivo inmediato del proyecto es delegar el cómputo masivamente paralelo a la GPU (Jetson Nano, 128 CUDA cores) y a la FPGA (Kria KV260), optimizar la CPU a nivel de hilos resulta redundante y desvía recursos de las arquitecturas heterogéneas meta.
+*   **Alineamiento Estricto de Datos (16-byte alignment):** *No aplicado rigurosamente.* Aunque se vectorizó con NEON, los punteros de memoria asignados por el sistema (vía `malloc` o `stb_image`) no están explícitamente forzados a un alineamiento de 16 bytes mediante atributos del compilador (`__attribute__((aligned(16)))`). Esto implica el uso de instrucciones de carga no alineada (`vld1q_f32` en lugar de cargas alineadas puras). No se aplicó porque el impacto en arquitecturas ARM modernas (ARMv8) es marginal, y requeriría reestructurar el asignador de memoria global.
+
+## 3. Resumen de Siguientes Pasos (Estrategia de Mejora)
+
+El perfilado estadístico (>100 muestras) demuestra que, tras aislar las penalizaciones de I/O (guardado CSV), la etapa 3 (`LK_COMPUTE`) es responsable de la práctica totalidad del tiempo de procesamiento.
+
+**Estrategia a corto plazo (Acelerador I - Jetson Nano):**
+Descargar la etapa 3 hacia la GPU integrada Maxwell. Se implementarán kernels en CUDA (`src/lk_cuda.cu`) para mapear el problema 2D directamente en un Grid de bloques de hilos, donde cada hilo resuelva la regla de Cramer para un píxel independiente. El objetivo es superar drásticamente los 45 ms actuales del baseline escalar.
+
+## 5. Guía de Despliegue Rápido (Cheat Sheet)
 
 ### A. Sincronización desde la PC Local hacia la Kria
 ```bash
@@ -76,8 +92,6 @@ rsync -avz --delete \
   -e "ssh -J el5859@51.161.8.220:9222" \
   . el5859@192.168.0.82:~/"Proyecto final"
 ```
-Dependencias necesarias en la tarjeta
-sudo apt update && sudo apt install -y build-essential cmake python3
 
 ### B. Comilacion y ejecucion manual en la kria
 Conectarse a la Kria
@@ -96,112 +110,8 @@ Ejecutar benchmark único
 ```
 ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png
 ```
-Ejecutar perfilado de 100 muestras (Ejemplo con NEON)
-```
-bash ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png neon 100
-```
-Analizar las métricas resultantes
-```
-python3 ../scripts/analyze.py ../results/profiling/times_neon.csv
-```
-
 ### C. Video demostrativo
 https://github.com/user-attachments/assets/01c70c37-749b-45bd-bf76-07d737b1cba1
----
-# Prototipo Acelerador 1 (NVIDIA CUDA)
-
-Esta etapa migra el núcleo de cómputo del algoritmo de Lucas-Kanade hacia la GPU utilizando NVIDIA CUDA. El objetivo es evaluar distintas estrategias de gestión de jerarquía de memoria y aislar el tiempo de ejecución de los kernels en la plataforma NVIDIA Jetson Nano (SoC Maxwell).
-
-## Estructura del workspace (Archivos CUDA)
-
-```text
-Proyecto final/
-├── include/
-│   ├── cuda_check.h        # Macros para validación de errores en llamadas a CUDA API
-│   ├── gpu_timing.h        # Definiciones para la medición fina con cudaEvent_t
-│   └── of.h                # Contrato global actualizado con firmas de GPU
-├── src/
-│   ├── gpu_timing.cu       # Implementación de timers y warm-up del contexto CUDA
-│   ├── lk_cuda.cu          # Baseline CUDA: 1 hilo = 1 píxel, lecturas directas a VRAM
-│   ├── lk_cuda_opt.cu      # Kernel fusionado: cálculo al vuelo sin memoria compartida
-│   ├── lk_cuda_shared.cu   # Acelerador final: carga cooperativa en caché L1 (__shared__)
-│   └── main.c              # Orquestador actualizado con opciones --mode y warm-up
-├── tests/
-│   └── test_cuda_correctness.c # Validación automática de tolerancia de error (EPE) en GPU
-├── scripts/
-│   ├── profile_gpu.sh      # Perfilado con desglose interno (alloc/h2d/kernel/d2h/free)
-│   └── profile.sh          # Automatización de corridas estadísticas generales
-└── results/profiling/      # Salidas CSV de los perfilados en Jetson
-```
-
-## 1. Estrategias de Aceleración en GPU
-
-Se implementaron tres enfoques para trasladar el cálculo a la tarjeta gráfica, atacando progresivamente los cuellos de botella de memoria:
-
-*   **lk_cuda.cu**: básicamente es el baseline normal. Aquí cada hilo de la gpu toma un pixel d la imagen y hace el calculo. hace el recorrido de la ventana 7x7 de lucas kanade y calcula los gradientes, pero todo lo lee directamente de la memoria global (vram). Funciona bien y saca el resultado q es, pero es lento xq estar leyendo a cada rato de la global atraviesa todo el bus y genera un cuello de botella.
-*   **lk_cuda_opt.cu**: aquí tratamos de optimizar fusionando todo el trabajo. En vez de guardar los gradientes, los calculamos en el kernel para ahorrar pasos. No se obtuvo lo que se pensó para sacar cada gradiente de la ventana cada hilo terminó haciendo 294 lecturas a la memoria global de nuevo. Parece que todos los hilos dependían de los datos al mismo tiempo, saturamos el anchode banda (memory bound full), entonces el tiempo mas bien empeoro en vez de mejorar.
-*   **lk_cuda_shared.cu**: usando la memoria compartida de cuda (`__shared__`) los 256 hilos de un bloque cooperan entres si para cargar de una vez un pedazo d la imagen (un tile d 16x16 mas un halo d 4 pixeles para los bordes xq se ocupan para los gradientes, meten un cuadro d 24x24 total). Todo eso se sube a la cache L1 q es mas rápida, luego ponemos un `__syncthreads()` para q todos s esperen a que termine de cargarse el pedazo, y ahora los cálculos se hacen leyendo todo de la cache L1 en vez de ir hasta la ram de nuevo. Se atacó el problema del bus de raiz y bajo los tjempos, evitando leer la global 294 veces por pixel.
-
-## 2. Resultados de Rendimiento en Jetson Nano
-
-La validación funcional se realizó con `./test_cuda_correctness` sobre frames sintéticos, donde **todos los kernels CUDA pasaron la prueba de tolerancia** (max_err = 2.265e-06, 0% de píxeles fuera de tolerancia).
-
-Evaluando los frames reales de prueba (`1024x436` píxeles) tras 100 corridas estadísticas, los tiempos para el **núcleo de cálculo puro** (`lk_compute_ms`) fueron:
-
-| Arquitectura / Modo | Tiempo Promedio (ms) | Notas de hardware |
-| :--- | :---: | :--- |
-| **CPU (Scalar Baseline)** | 277.6 ms | Un hilo Cortex-A57 |
-| **GPU (CUDA Baseline)** | 224.6 ms | Saturación del bus de memoria VRAM |
-| **CPU (ARM NEON)** | 111.7 ms | Vectorización SIMD |
-| **GPU (CUDA Shared)** | **91.98 ms** | Carga cooperativa en Caché L1 |
-
-> **Análisis:** La memoria compartida (`cuda_shared`) logró vencer finalmente al núcleo ARM NEON, reduciendo el tiempo puro de cálculo a **~92 ms**. Sin embargo, aunque el kernel es superior, el tiempo total del pipeline (1343 ms) sigue estando dominado por la inicialización, la reserva de memoria (`cudaMalloc`) y las transferencias redundantes Host-to-Device y Device-to-Host (`cudaMemcpy`). Al ser la Jetson Nano un SoC que comparte físicamente la misma memoria LPDDR4, pagar el costo de estas transferencias es un desperdicio. Esto justifica que el siguiente paso de optimización requiera usar **Zero-Copy Memory** (memoria mapeada directamente) para eliminar el *overhead* del controlador.
-
-## 3. Guía de Despliegue Rápido (Cheat Sheet)
-
-### A. Dependencias en la Jetson Nano
-```bash
-sudo apt update && sudo apt install -y build-essential cmake python3 tree
-```
-
-### B. Sincronización (Rsync)
-```bash
-cd ~/Desktop/"Proyecto final"
-
-rsync -avz --delete \
-  --exclude 'build' --exclude '.git' --exclude 'results' \
-  -e "ssh -J el5859@51.161.8.220:9222" \
-  . el5859@192.168.0.182:~/"Proyecto final"
-```
-
-### C. Compilación y Validación Automática
-Conectarse a la Jetson Nano y compilar desde cero:
-```bash
-ssh -J el5859@51.161.8.220:9222 el5859@192.168.0.182
-cd ~/"Proyecto final"
-mkdir -p results/profiling build && cd build
-cmake ..
-make -j$(nproc)
-
-# Validar que ningún kernel tenga errores matemáticos
-./test_cuda_correctness
-```
-
-### D. Perfilado y Análisis
-Para medir el rendimiento estadístico aislando el tiempo total de cómputo del kernel con memoria compartida:
-```bash
-bash ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
-```
-
-Si se desea ver el **desglose fino** de los tiempos internos de la GPU para auditar el cuello de botella (Alloc, H2D, Kernel, D2H, Free):
-```bash
-bash ../scripts/profile_gpu.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
-```
-
-Analizar los resultados:
-```bash
-python3 ../scripts/analyze.py ../results/profiling/times_cuda_shared.csv
-```
 
 ### Discord Channel
 https://discord.com/channels/1342248894721167360/1536185160062468178

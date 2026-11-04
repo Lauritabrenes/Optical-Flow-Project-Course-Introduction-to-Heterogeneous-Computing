@@ -11,9 +11,7 @@
 
 extern "C" {
     #include "of.h"
-    #include "gpu_timing.h"
 }
-#include "cuda_check.h"
 
 #define LK_RADIUS 3
 #define LK_DET_THRESHOLD 1e-6f
@@ -76,91 +74,57 @@ __global__ void solve_flow_kernel(const float* Ix, const float* Iy, const float*
     }
 }
 
-#define TRY(call) do { e = (call); if (e != cudaSuccess) {                   \
-        fprintf(stderr, "CUDA error %s:%d: %s -> %s\n", __FILE__, __LINE__,  \
-                #call, cudaGetErrorString(e)); rc = -3; goto fail; } } while (0)
-
-/*
- * FUNCION HOST: llamada desde C (main.c)
- * - Verificacion de errores en todas las llamadas CUDA (TRY).
- * - Desglose de tiempos con cudaEvent: alloc / H2D / kernel / D2H / free
- *   (resultado en g_gpu_timing).
- * - La memoria se libera siempre, incluso tras un error.
+/* 
+ * FUNCION HOST: Puente llamado desde C (main.c)
  */
-extern "C" int of_lk_cuda(const OFImage *frame1, const OFImage *frame2, OFFlow *flow)
+extern "C" int of_lk_cuda(const OFImage *frame1, const OFImage *frame2, OFFlow *flow) 
 {
     if (!frame1 || !frame2 || !flow) return -1;
 
-    const int w = frame1->width;
-    const int h = frame1->height;
-    const size_t img_size = (size_t)w * (size_t)h * sizeof(float);
+    int w = frame1->width;
+    int h = frame1->height;
+    size_t img_size = w * h * sizeof(float);
 
-    float *d_f1 = NULL, *d_f2 = NULL, *d_Ix = NULL, *d_Iy = NULL, *d_It = NULL, *d_u = NULL, *d_v = NULL;
-    int rc = 0;
-    cudaError_t e;
-    cudaEvent_t ev[6];
-    int k;
+    /* Punteros de Device (VRAM) */
+    float *d_f1, *d_f2, *d_Ix, *d_Iy, *d_It, *d_u, *d_v;
 
-    for (k = 0; k < 6; k++) CUDA_CHECK(cudaEventCreate(&ev[k]));
+    /* 1. Asignacion en GPU */
+    if (cudaMalloc(&d_f1, img_size) != cudaSuccess) return -2;
+    cudaMalloc(&d_f2, img_size);
+    cudaMalloc(&d_Ix, img_size);
+    cudaMalloc(&d_Iy, img_size);
+    cudaMalloc(&d_It, img_size);
+    cudaMalloc(&d_u, img_size);
+    cudaMalloc(&d_v, img_size);
 
-    /* ---- [3a] ALLOC ---- */
-    TRY(cudaEventRecord(ev[0]));
-    TRY(cudaMalloc(&d_f1, img_size));
-    TRY(cudaMalloc(&d_f2, img_size));
-    TRY(cudaMalloc(&d_Ix, img_size));
-    TRY(cudaMalloc(&d_Iy, img_size));
-    TRY(cudaMalloc(&d_It, img_size));
-    TRY(cudaMalloc(&d_u, img_size));
-    TRY(cudaMalloc(&d_v, img_size));
-    TRY(cudaMemset(d_u, 0, img_size));
-    TRY(cudaMemset(d_v, 0, img_size));
-    TRY(cudaMemset(d_Ix, 0, img_size));
-    TRY(cudaMemset(d_Iy, 0, img_size));
-    TRY(cudaMemset(d_It, 0, img_size));
+    /* 2. Transferencia RAM -> VRAM */
+    cudaMemcpy(d_f1, frame1->data, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_f2, frame2->data, img_size, cudaMemcpyHostToDevice);
+    cudaMemset(d_u, 0, img_size);
+    cudaMemset(d_v, 0, img_size);
+    cudaMemset(d_Ix, 0, img_size);
+    cudaMemset(d_Iy, 0, img_size);
+    cudaMemset(d_It, 0, img_size);
 
-    /* ---- [3b] H2D ---- */
-    TRY(cudaEventRecord(ev[1]));
-    TRY(cudaMemcpy(d_f1, frame1->data, img_size, cudaMemcpyHostToDevice));
-    TRY(cudaMemcpy(d_f2, frame2->data, img_size, cudaMemcpyHostToDevice));
+    /* 3. Configuracion de Geometria de Hilos (Bloques de 16x16) */
+    dim3 blockSize(16, 16);
+    dim3 gridSize((w + blockSize.x - 1) / blockSize.x, (h + blockSize.y - 1) / blockSize.y);
 
-    /* ---- [3c] KERNEL ---- */
-    {
-        dim3 blockSize(16, 16);
-        dim3 gridSize((w + blockSize.x - 1) / blockSize.x, (h + blockSize.y - 1) / blockSize.y);
-        TRY(cudaEventRecord(ev[2]));
-        compute_gradients_kernel<<<gridSize, blockSize>>>(d_f1, d_f2, d_Ix, d_Iy, d_It, w, h);
-        TRY(cudaGetLastError());
-        solve_flow_kernel<<<gridSize, blockSize>>>(d_Ix, d_Iy, d_It, d_u, d_v, w, h);
-        TRY(cudaGetLastError());
-        TRY(cudaEventRecord(ev[3]));
-        TRY(cudaEventSynchronize(ev[3]));   /* errores de ejecucion aparecen aqui */
-    }
+    /* 4. Lanzamiento de Kernels */
+    compute_gradients_kernel<<<gridSize, blockSize>>>(d_f1, d_f2, d_Ix, d_Iy, d_It, w, h);
+    cudaDeviceSynchronize();
 
-    /* ---- [3d] D2H ---- */
-    TRY(cudaMemcpy(flow->u, d_u, img_size, cudaMemcpyDeviceToHost));
-    TRY(cudaMemcpy(flow->v, d_v, img_size, cudaMemcpyDeviceToHost));
-    TRY(cudaEventRecord(ev[4]));
+    solve_flow_kernel<<<gridSize, blockSize>>>(d_Ix, d_Iy, d_It, d_u, d_v, w, h);
+    cudaDeviceSynchronize();
 
-fail:
-    /* ---- [3e] FREE (siempre) ---- */
-    cudaFree(d_f1);
-    cudaFree(d_f2);
-    cudaFree(d_Ix);
-    cudaFree(d_Iy);
-    cudaFree(d_It);
-    cudaFree(d_u);
-    cudaFree(d_v);
+    /* 5. Transferencia VRAM -> RAM */
+    cudaMemcpy(flow->u, d_u, img_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(flow->v, d_v, img_size, cudaMemcpyDeviceToHost);
 
-    if (rc == 0) {
-        cudaEventRecord(ev[5]);
-        cudaEventSynchronize(ev[5]);
-        cudaEventElapsedTime(&g_gpu_timing.alloc_ms,  ev[0], ev[1]);
-        cudaEventElapsedTime(&g_gpu_timing.h2d_ms,    ev[1], ev[2]);
-        cudaEventElapsedTime(&g_gpu_timing.kernel_ms, ev[2], ev[3]);
-        cudaEventElapsedTime(&g_gpu_timing.d2h_ms,    ev[3], ev[4]);
-        cudaEventElapsedTime(&g_gpu_timing.free_ms,   ev[4], ev[5]);
-    }
-    for (k = 0; k < 6; k++) cudaEventDestroy(ev[k]);
-    return rc;
+    /* 6. Liberacion de VRAM */
+    cudaFree(d_f1); cudaFree(d_f2);
+    cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It);
+    cudaFree(d_u); cudaFree(d_v);
+
+    return 0;
 }
-#undef TRY
