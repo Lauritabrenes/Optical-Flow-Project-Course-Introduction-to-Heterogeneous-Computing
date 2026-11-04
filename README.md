@@ -210,6 +210,8 @@ Analizar los resultados:
 ```bash
 python3 ../scripts/analyze.py ../results/profiling/times_cuda_shared.csv
 ```
+### E. Video demostrativo
+https://github.com/user-attachments/assets/212f186c-e63a-4ccf-9f28-54bf75299faa
 
 ### Discord Channel
 https://discord.com/channels/1342248894721167360/1536185160062468178
