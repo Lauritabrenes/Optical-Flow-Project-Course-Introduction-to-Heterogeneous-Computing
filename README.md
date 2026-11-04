@@ -8,7 +8,7 @@ Luis G. León Vega
 
 Students: 
 
-  George Roussel Briceño Celestino
+  George Roussel Briceño Celestino        roussel@estudiantec.cr
   
   Laura Elena Brenes Espinoza	           lauritabrenes@estudiantec.cr
   
@@ -155,7 +155,7 @@ Evaluando los frames reales de prueba (`1024x436` píxeles) tras 100 corridas es
 | **CPU (ARM NEON)** | 111.7 ms | Vectorización SIMD |
 | **GPU (CUDA Shared)** | **91.98 ms** | Carga cooperativa en Caché L1 |
 
-> **Análisis:** La memoria compartida (`cuda_shared`) logró vencer finalmente al núcleo ARM NEON, reduciendo el tiempo puro de cálculo a **~92 ms**. Sin embargo, aunque el kernel es superior, el tiempo total del pipeline (1343 ms) sigue estando dominado por la inicialización, la reserva de memoria (`cudaMalloc`) y las transferencias redundantes Host-to-Device y Device-to-Host (`cudaMemcpy`). Al ser la Jetson Nano un SoC que comparte físicamente la misma memoria LPDDR4, pagar el costo de estas transferencias es un desperdicio. Esto justifica que el siguiente paso de optimización requiera usar **Zero-Copy Memory** (memoria mapeada directamente) para eliminar el *overhead* del controlador.
+**Análisis:** La memoria compartida (`cuda_shared`) logró vencer finalmente al núcleo ARM NEON, reduciendo el tiempo puro de cálculo a **~92 ms**. Sin embargo, aunque el kernel es superior, el tiempo total del pipeline (1343 ms) sigue estando dominado por la inicialización, la reserva de memoria (`cudaMalloc`) y las transferencias redundantes Host-to-Device y Device-to-Host (`cudaMemcpy`). Al ser la Jetson Nano un SoC que comparte físicamente la misma memoria LPDDR4, pagar el costo de estas transferencias es un desperdicio. Esto justifica que el siguiente paso de optimización requiera usar **Zero-Copy Memory** (memoria mapeada directamente) para eliminar el *overhead* del controlador.
 
 ## 3. Guía de Despliegue Rápido (Cheat Sheet)
 
@@ -182,12 +182,15 @@ cd ~/"Proyecto final"
 mkdir -p results/profiling build && cd build
 cmake ..
 make -j$(nproc)
-
-# Validar que ningún kernel tenga errores matemáticos
-./test_cuda_correctness
+chmod +x ../scripts/profile.sh
 ```
+o chmod +x ../scripts/profile_gpu.sh 
 
 ### D. Perfilado y Análisis
+Para medir el rendimiento estadístico aislando el tiempo total de cómputo del kernel baseline(sin optimizaciones):
+```bash
+../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda 100
+```
 Para medir el rendimiento estadístico aislando el tiempo total de cómputo del kernel con memoria compartida:
 ```bash
 bash ../scripts/profile.sh ./bench_main ../data/frames/frame_000001.png ../data/frames/frame_000002.png cuda_shared 100
