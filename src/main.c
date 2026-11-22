@@ -203,12 +203,20 @@ int main(int argc, char **argv)
     }
     t_pre = now_ms() - t0;
 
+<<<<<<< HEAD
+    /* [2b] Warm-up GPU: crea el contexto CUDA FUERA de la region medida
+     *      para que LK_COMPUTE no incluya la inicializacion del driver. */
+#ifdef HAVE_CUDA
+    if (args.mode == MODE_CUDA || args.mode == MODE_CUDA_OPT ||
+        args.mode == MODE_CUDA_SHARED) {
+=======
 /* [2b] Warm-up GPU selectivo
      * Para 'cuda' (baseline), No hacemos warm-up para reflejar el tiempo de arranque (demostración).
      * Para los demás aceleradores (cuda_opt, cuda_shared), SÍ hacemos warm-up para medir el kernel neto 
      * Esto para medir la optimización lograda */
 #ifdef HAVE_CUDA
     if (args.mode == MODE_CUDA_OPT || args.mode == MODE_CUDA_SHARED) {
+>>>>>>> origin/main
         if (of_gpu_warmup() != 0) {
             fprintf(stderr, "Error: no se pudo inicializar CUDA\n");
             goto cleanup;

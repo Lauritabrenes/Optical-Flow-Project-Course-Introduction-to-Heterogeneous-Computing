@@ -1,0 +1,8 @@
+INFO: [SIM 2] *************** CSIM start ***************
+   Compiling ../../../../../../lk/tb/tb_lk_hls.cpp in debug mode
+   Compiling ../../../../../../lk/hls/v0_port_directo/lk_hls_v0.cpp in debug mode
+   Generating csim.exe
+Frames sinteticos 128x96 (dx=1.0, dy=0.5)
+[PASS] lk_hls_v0  max_err=0.000e+00  mean_err=0.000e+00  pix_fuera_tol=0 (0.0000 %)
+INFO: [SIM 1] CSim done with 0 errors.
+INFO: [SIM 3] *************** CSIM finish ***************
