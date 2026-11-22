@@ -1,0 +1,15 @@
+Perfilando lk_hls_v0: 3 warmup + 300 corridas (320x240) ...
+
+================ ANALISIS ESTADISTICO ================
+Muestras validas: 300 (Archivo: times_fpga_v0.csv)
+
+Etapa                 Media    Mediana        Std        Min        Max
+-----------------------------------------------------------------------
+load_ms              23.945     23.908      0.187     23.689     24.838
+h2d_ms                0.209      0.205      0.018      0.198      0.332
+kernel_ms            22.510     22.499      0.052     22.486     23.003
+d2h_ms                0.135      0.126      0.031      0.119      0.275
+total_ms             46.799     46.753      0.215     46.549     48.066
+======================================================
+{'frames': 'frames/frame_000001_320x240_crop.png frames/frame_000002_320x240_crop.png', 'reps': 300, 'clk_mhz': 142.86, 'kernel_mean_ms': 22.51047475573917, 'kernel_std_ms': 0.05159284503391003, 'cycles_per_pixel': 41.87300030735545, 'fps_kernel': 44.42376319695543, 'max_abs_err_u': 3.1137867, 'max_abs_err_v': 4.3856187, 'mean_abs_err': 0.0015698483912274241, 'run_start_epoch': 1795295092.5303662, 'run_end_epoch': 1795295106.7412245}
+Saved times_fpga_v0.csv, stats_fpga_v0.csv, summary_fpga_v0.csv, flow_000001.npy

@@ -1,0 +1,2 @@
+frames,reps,clk_mhz,kernel_mean_ms,kernel_std_ms,cycles_per_pixel,fps_kernel,max_abs_err_u,max_abs_err_v,mean_abs_err,run_start_epoch,run_end_epoch
+frames/frame_000001_320x240_crop.png frames/frame_000002_320x240_crop.png,300,142.86,22.52962136020263,0.08771759119453697,41.908615983314434,44.386010044822434,3.1137867,4.3856187,0.0015698483912274241,1795295878.7057714,1795295892.9467623
