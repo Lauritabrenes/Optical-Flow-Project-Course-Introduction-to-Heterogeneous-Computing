@@ -11,9 +11,13 @@
 
 extern "C" {
     #include "of.h"
+<<<<<<< HEAD
     #include "gpu_timing.h"
 }
 #include "cuda_check.h"
+=======
+}
+>>>>>>> origin/main
 
 #define LK_RADIUS 3
 #define LK_DET_THRESHOLD 1e-6f
@@ -76,6 +80,7 @@ __global__ void solve_flow_kernel(const float* Ix, const float* Iy, const float*
     }
 }
 
+<<<<<<< HEAD
 #define TRY(call) do { e = (call); if (e != cudaSuccess) {                   \
         fprintf(stderr, "CUDA error %s:%d: %s -> %s\n", __FILE__, __LINE__,  \
                 #call, cudaGetErrorString(e)); rc = -3; goto fail; } } while (0)
@@ -164,3 +169,59 @@ fail:
     return rc;
 }
 #undef TRY
+=======
+/* 
+ * FUNCION HOST: Puente llamado desde C (main.c)
+ */
+extern "C" int of_lk_cuda(const OFImage *frame1, const OFImage *frame2, OFFlow *flow) 
+{
+    if (!frame1 || !frame2 || !flow) return -1;
+
+    int w = frame1->width;
+    int h = frame1->height;
+    size_t img_size = w * h * sizeof(float);
+
+    /* Punteros de Device (VRAM) */
+    float *d_f1, *d_f2, *d_Ix, *d_Iy, *d_It, *d_u, *d_v;
+
+    /* 1. Asignacion en GPU */
+    if (cudaMalloc(&d_f1, img_size) != cudaSuccess) return -2;
+    cudaMalloc(&d_f2, img_size);
+    cudaMalloc(&d_Ix, img_size);
+    cudaMalloc(&d_Iy, img_size);
+    cudaMalloc(&d_It, img_size);
+    cudaMalloc(&d_u, img_size);
+    cudaMalloc(&d_v, img_size);
+
+    /* 2. Transferencia RAM -> VRAM */
+    cudaMemcpy(d_f1, frame1->data, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_f2, frame2->data, img_size, cudaMemcpyHostToDevice);
+    cudaMemset(d_u, 0, img_size);
+    cudaMemset(d_v, 0, img_size);
+    cudaMemset(d_Ix, 0, img_size);
+    cudaMemset(d_Iy, 0, img_size);
+    cudaMemset(d_It, 0, img_size);
+
+    /* 3. Configuracion de Geometria de Hilos (Bloques de 16x16) */
+    dim3 blockSize(16, 16);
+    dim3 gridSize((w + blockSize.x - 1) / blockSize.x, (h + blockSize.y - 1) / blockSize.y);
+
+    /* 4. Lanzamiento de Kernels */
+    compute_gradients_kernel<<<gridSize, blockSize>>>(d_f1, d_f2, d_Ix, d_Iy, d_It, w, h);
+    cudaDeviceSynchronize();
+
+    solve_flow_kernel<<<gridSize, blockSize>>>(d_Ix, d_Iy, d_It, d_u, d_v, w, h);
+    cudaDeviceSynchronize();
+
+    /* 5. Transferencia VRAM -> RAM */
+    cudaMemcpy(flow->u, d_u, img_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(flow->v, d_v, img_size, cudaMemcpyDeviceToHost);
+
+    /* 6. Liberacion de VRAM */
+    cudaFree(d_f1); cudaFree(d_f2);
+    cudaFree(d_Ix); cudaFree(d_Iy); cudaFree(d_It);
+    cudaFree(d_u); cudaFree(d_v);
+
+    return 0;
+}
+>>>>>>> origin/main
