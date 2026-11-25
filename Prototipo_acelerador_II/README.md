@@ -173,6 +173,8 @@ rsync -avz -e "ssh -J ecaslab" \
 | `Could not resolve hostname ecaslab` | El `rsync` se corrió dentro de la Kria; correrlo desde el PC |
 
 ---
+### Video demostrativo(Prototipo Acelerador II)
+https://github.com/user-attachments/assets/29abb0d5-2d04-459b-95e4-89a06c8dac4c
 
 ## 4. Siguientes pasos
 
