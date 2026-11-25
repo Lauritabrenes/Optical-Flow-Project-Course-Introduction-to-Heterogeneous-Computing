@@ -183,3 +183,7 @@ https://github.com/user-attachments/assets/29abb0d5-2d04-459b-95e4-89a06c8dac4c
 - **Tipos de datos:** evaluar punto fijo (`ap_fixed`) en la acumulación para reducir el uso de DSP y LUT.
 - **Host:** reducir `load_ms` decodificando los frames una sola vez o en un hilo paralelo al kernel.
 - **Análisis heterogéneo:** comparar CPU (NEON), GPU (CUDA shared) y FPGA a la misma resolución, en tiempo, energía por frame y utilización.
+
+## Declaración Uso AI
+Uso e AI con fines de consulta y apoyo:
+https://copilot.cloud.microsoft/chat/share/eyJzaGFyZUlkIjoiMDBhYTdjMTktNmM5Ni00OGY1LWJhNTEtMmUxNWE1ZWFmNWRhIiwiY29udmVyc2F0aW9uSWQiOiI3YTk4MDk3NC03ZjMyLTRhMTctYmRiZC0wODliM2M5Y2Q3Y2IifQ%3D%3D 
