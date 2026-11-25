@@ -384,8 +384,34 @@ https://github.com/user-attachments/assets/29abb0d5-2d04-459b-95e4-89a06c8dac4c
 *   **Ancho de bus:** empaquetar píxeles (`ap_uint<128>`) en `m_axi` y usar ráfagas.
 *   **Tipos de datos:** probar punto fijo (`ap_fixed`) en la acumulación para bajar DSP y LUT.
 *   **Host:** bajar `load_ms` decodificando los frames una sola vez o en un hilo en paralelo al kernel.
-*   **Análisis heterogéneo:** comparar CPU (NEON), GPU (CUDA shared) y FPGA con el mismo recorte de 320x240, en tiempo, energía por frame y utilización.
+*   **Análisis heterogéneo:** ya se hizo la comparación de CPU (NEON), GPU (CUDA shared) y FPGA con el mismo recorte de 320x240 (ver la sección de abajo). Falta sumarle energía por frame de la Jetson cuando se habilite su sensor de potencia.
+
+# Comparación entre plataformas (mismo recorte 320x240)
+
+Para comparar las tres plataformas de forma justa, se corrieron todas las versiones con el **mismo recorte 320x240 de los mismos frames** (`frame_000001/2_320x240_crop.png`), 100 corridas por modo. Se compara el **núcleo puro de Lucas-Kanade** (`lk_compute_ms` en CPU/GPU, `kernel_ms` en la FPGA) y no el tiempo total, porque el pipeline en C agrega un blur gaussiano y un guardado de CSV que el host de la FPGA no ejecuta.
+
+| Placa / modo        | Núcleo LK (ms) | ns/píxel | Total (ms) |
+| :--- | :---: | :---: | :---: |
+| Jetson ARM NEON     | **12.42** | **162** | 238.1 |
+| Jetson CUDA shared  | 20.03 | 261 | 233.4 |
+| Kria ARM NEON       | 21.18 | 276 | 278.8 |
+| FPGA `lk_hls_v0`    | 22.53 | 293 | 46.9 |
+| Jetson scalar       | 26.42 | 344 | 248.5 |
+| Kria scalar         | 32.35 | 421 | 279.4 |
+| Jetson CUDA base    | 128.81 | 1677 | 338.3 |
+
+**Lectura:**
+
+*   La FPGA v0 es **1.44x más rápida que la CPU escalar** de la misma Kria, pero la **NEON de la misma Kria le gana por poco** (21.2 vs 22.5 ms). Esto confirma que v0 está limitada por cómputo serial (~42 ciclos por píxel ≈ 49 iteraciones de la ventana) y deja claro el margen para la versión con *line buffers*.
+*   A este tamaño chico, **la NEON de la Jetson es lo más rápido de todo**. El kernel CUDA shared, que ganaba a 1024x436, aquí pierde contra NEON porque la imagen es pequeña y el costo fijo de lanzar el kernel y copiar (H2D ~3.3 ms, D2H ~6.5 ms) pesa más que el cómputo. El CUDA base además incluye crear el contexto CUDA en cada corrida (sin *warm-up*).
+*   En la FPGA las transferencias son **menos del 1 %** del tiempo porque el host y la FPGA comparten la DDR; en la Jetson sí se paga H2D/D2H. Por eso el `total` de la FPGA (46.9 ms) es mucho menor que el de CPU/GPU, aunque su núcleo no sea el más rápido.
+*   Todos los modos dan el mismo flujo (84.9 % de píxeles con solución), así que la comparación es sobre el mismo resultado numérico.
+
+**Potencia (solo Kria, sensor INA260):** reposo 3886 mW, scalar 4024 mW, NEON 4003 mW, FPGA v0 4166 mW. La Jetson `.182` no expone su sensor de potencia, así que de esa placa no hay energía por frame medida. La potencia de CPU es el promedio de toda la corrida (el núcleo LK es una fracción del tiempo, domina el guardado de CSV), así que subestima la potencia durante el cálculo.
 
 # Artículo científico en construcción
 Lo puede encontrar en Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing
 /Articulo Cientifico/main.pdf
+
+### Discord Channel
+https://discord.com/channels/1342248894721167360/1536185160062468178
