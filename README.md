@@ -213,6 +213,202 @@ python3 ../scripts/analyze.py ../results/profiling/times_cuda_shared.csv
 ### E. Video demostrativo
 https://github.com/user-attachments/assets/212f186c-e63a-4ccf-9f28-54bf75299faa
 
+---
+# Prototipo Acelerador 2 (AMD Kria KV260 - Vitis HLS)
+
+Esta etapa traslada el núcleo de cómputo de Lucas-Kanade a la FPGA de la AMD Kria KV260 mediante un kernel en Vitis HLS (`lk_hls_v0`). El objetivo es usar un segundo acelerador, distinto de la GPU del Acelerador 1, y perfilar en la placa el tiempo de cada etapa y el consumo de potencia.
+
+`lk_hls_v0` es un port directo de `lk_scalar.c`: mismo algoritmo (gradientes centrales, ventana 7x7, regla de Cramer) para poder validarlo contra la CPU. No tiene optimizaciones de pipeline ni *line buffers*, sirve como baseline de la FPGA.
+
+**Resolución de trabajo:** 320x240. Es un **recorte de los mismos frames** `frame_000001.png` y `frame_000002.png` (Sintel, 1024x436) que se usaron en la CPU y en la Jetson, así que el contenido de la imagen es el mismo y solo cambia el tamaño. No se pudo ir más arriba porque v0 guarda Ix, Iy e It completos en URAM y a 320x240 ya ocupa 63 de los 64 bloques.
+
+## Estructura del workspace (Archivos FPGA)
+
+```text
+Prototipo_acelerador_II/
+├── 0_src/
+│   ├── hls/include/lk_hls.h              # Parámetros (ventana 7x7, tamaño máximo)
+│   ├── hls/v0_port_directo/lk_hls_v0.cpp # Kernel v0
+│   ├── scripts/run_hls_v0.tcl            # Flujo HLS por script (legado, ver nota en la guía)
+│   └── tb/tb_lk_hls.cpp                  # Testbench contra referencia (corregido para co-sim)
+├── 1_hls_config/hls_config.cfg           # part xck26, reloj 5 ns, -DLK_MAX_W=320 -DLK_MAX_H=240
+├── 2_csim/lk_hls_v0_csim.log             # Simulación en C (PASS)
+├── 3_csynth/csynth.rpt                   # Reporte de síntesis HLS
+├── 4_cosim/                              # Co-simulación RTL (Verilog, PASS)
+├── 5_vivado_impl/                        # Potencia, timing, utilización, ruteo, runme.log
+├── 6_bitstream/                          # design_1_wrapper.bit + design_1.hwh
+└── 7_board/                              # Ejecución y perfilado en la Kria
+    ├── lk_v0.bit / lk_v0.hwh             # Overlay PYNQ (mismo nombre base, misma compilación)
+    ├── frames/                           # frame_000001/2_320x240_crop.png
+    ├── run_lk.py, run.sh                 # Primera prueba funcional
+    ├── run_lk_prof.py                    # Perfilado: 3 de calentamiento + N corridas
+    ├── sample_power.sh                   # Muestreo de potencia vía hwmon (INA260, cada 0.2 s)
+    ├── power_summary.py                  # Potencia en reposo/carga y energía por frame
+    ├── list_ips.py                       # Lista las IP del overlay
+    └── results/                          # CSV de tiempos, potencia, log y flujo (u, v)
+```
+
+## 1. Decisiones de Aceleración y Descarga de Trabajo
+
+*   **Qué se descarga:** igual que en CUDA, el perfilado del prototipo en C mostró que el cálculo LK (gradientes, ventana y solución 2x2) domina el tiempo del pipeline, entonces es lo que se pasa a la FPGA. La carga de la imagen y la escala se quedan en el ARM.
+*   **Interfaz del kernel:** 4 puertos `m_axi` (f1, f2, u, v) conectados a HP0-HP3 para leer y escribir directo en la DDR, y un puerto de control `s_axilite` (w, h, start/done) en `0xA0000000`.
+*   **Memoria:** en la Jetson el tiempo total se lo comían `cudaMalloc` y `cudaMemcpy`. En la Kria los buffers se reservan una sola vez con `pynq.allocate` (memoria CMA contigua compartida con el PS), así que `h2d` y `d2h` quedan en sincronizar la caché (~0.2 ms y ~0.15 ms).
+*   **Gradientes en URAM:** `Ix`, `Iy` e `It` se guardan completos en URAM. Es lo más directo de portar, pero es lo que limita la resolución a 320x240.
+
+## 2. Resultados de Rendimiento en Kria KV260 (FPGA)
+
+### Validación y síntesis
+
+| Prueba | Resultado |
+| :--- | :--- |
+| C-sim (frames sintéticos 128x96, dx=1.0, dy=0.5) | PASS, `max_err = 0`, 0 % de píxeles fuera de tolerancia |
+| Co-sim RTL (Verilog) | PASS, 172 945 ciclos |
+| Ruteo | 133 248 redes ruteadas, 0 errores |
+| Utilización | LUT 72.80 %, FF 30.81 %, DSP 379 (30.37 %), URAM 63/64 (98.44 %), BRAM 1 |
+| Reloj | Objetivo HLS 5 ns; PL a 142.86 MHz en la placa |
+
+### Perfilado en la placa (320x240, 300 corridas + 3 de calentamiento)
+
+| Etapa | Media (ms) | Mediana (ms) | Std (ms) | Min (ms) | Max (ms) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| `load_ms` (PNG + escala) | 24.002 | 23.918 | 0.272 | 23.652 | 24.952 |
+| `h2d_ms` | 0.215 | 0.210 | 0.023 | 0.202 | 0.388 |
+| **`kernel_ms`** | **22.530** | 22.500 | 0.088 | 22.485 | 22.915 |
+| `d2h_ms` | 0.149 | 0.128 | 0.046 | 0.120 | 0.293 |
+| `total_ms` | 46.895 | 46.779 | 0.306 | 46.481 | 47.982 |
+
+| Métrica | Valor |
+| :--- | :---: |
+| FPS del kernel | 44.39 |
+| Ciclos por píxel | 41.91 |
+| Error absoluto medio vs. referencia NumPy (ventana 7x7) | 0.0016 px |
+| Error máximo u / v (píxeles aislados) | 3.11 / 4.39 px |
+| Potencia en reposo / en carga | 3887 mW / 4166 mW (máx. 4580 mW) |
+| Potencia dinámica | ~279 mW |
+| Energía dinámica por frame | ~6.3 mJ |
+
+**Análisis:** el kernel es cerca del 48 % del tiempo total y las transferencias no llegan ni al 1 %, la diferencia con la Jetson es grande porque aquí no hay copias, solo sincronización de caché. El otro ~51 % es la carga del PNG en el ARM (`load_ms`). Los ~42 ciclos por píxel salen casi igual a las 49 iteraciones de la ventana 7x7, o sea que v0 está limitado por cómputo serial y no por memoria: cada píxel recorre su ventana completa uno por uno. Por eso el siguiente cuello de botella es el propio kernel y la lectura de los frames en el host, no la transferencia de datos.
+
+## 3. Guía de Despliegue Rápido (Cheat Sheet)
+
+> En la Kria se usa la cuenta compartida `el5859` (Kria 83, `192.168.0.83`). No poner la contraseña del laboratorio en el repo, scripts ni README.
+
+### A. Construcción del hardware (Vitis HLS + Vivado, PC)
+1. Ajustar las rutas `syn.file` y `tb.file` de `1_hls_config/hls_config.cfg` a la carpeta `0_src/`.
+2. Correr C-sim, C-synth, Co-sim y exportar el IP (`ip_catalog`). Con Vitis unificado (2024.2 o más nuevo):
+```bash
+v++ -c --mode hls --config 1_hls_config/hls_config.cfg --work_dir proj_lk_v0
+```
+   El `run_hls_v0.tcl` es del flujo viejo (`vitis_hls`): exporta `.xo` y no pasa `-DLK_MAX_W=320 -DLK_MAX_H=240`, así que si se usa hay que corregir eso.
+3. En Vivado: Zynq UltraScale+ MPSoC + `lk_hls_v0` (m_axi en HP0-HP3, s_axilite en `0xA0000000`), validar y generar el bitstream.
+4. Copiar `design_1_wrapper.bit` y `design_1.hwh` como `lk_v0.bit` y `lk_v0.hwh` (mismo nombre base, misma compilación).
+
+### B. Sincronización hacia la Kria (PC)
+```bash
+cd ~/Desktop/"Proyecto final"/Prototipo_acelerador_II/7_board
+
+rsync -avz -e "ssh -J el5859@51.161.8.220:9222" \
+  lk_v0.bit lk_v0.hwh frames run_lk_prof.py sample_power.sh power_summary.py \
+  el5859@192.168.0.83:~/deploy/
+md5sum lk_v0.bit
+```
+La cuenta es compartida, esto sobrescribe `~/deploy`. Si otro compañero tiene resultados ahí, avisar antes. Desde Windows (sin `rsync`) se puede usar `scp -J el5859@51.161.8.220:9222 ...` con los mismos archivos.
+
+### C. Preparación y verificación en la Kria
+```bash
+ssh -J el5859@51.161.8.220:9222 el5859@192.168.0.83
+cd ~/deploy && sed -i 's/\r$//' run_lk_prof.py sample_power.sh power_summary.py
+chmod +x sample_power.sh
+md5sum lk_v0.bit                                       # igual al del PC
+grep -o 'BASEVALUE="0xA0000000"[^>]*lk_hls_v0_0' lk_v0.hwh | head -1
+for h in /sys/class/hwmon/hwmon*; do echo "$h $(cat $h/name)"; done   # debe salir hwmon2 ina260_u14
+sudo ./sample_power.sh test.txt 2 && cat test.txt     # ~10 líneas, ~3900 mW
+```
+Si el sensor sale en otro `hwmon` (por ejemplo `hwmon3`), ajustar el script con `sed -i 's/hwmon2/hwmon3/' sample_power.sh`.
+
+### D. Prueba rápida (10 corridas, Kria)
+```bash
+sudo bash -c 'source /etc/profile.d/pynq_venv.sh; source /etc/profile.d/xrt_setup.sh 2>/dev/null; cd /home/el5859/deploy && python3 run_lk_prof.py 10'
+```
+Esperado: `kernel_ms ≈ 22.5`, `mean_abs_err ≈ 0.0016`. Si pasan ~10 s sin imprimir nada, `Ctrl+C` y revisar la tabla de problemas.
+
+### E. Perfilado completo con potencia (Kria, un comando a la vez)
+```bash
+sudo ./sample_power.sh platformstats_idle.txt 10       # placa en reposo 10 s, no usarla mientras
+
+sudo ./sample_power.sh platformstats_run.txt 0 & SP=$!; \
+sudo bash -c 'source /etc/profile.d/pynq_venv.sh; source /etc/profile.d/xrt_setup.sh 2>/dev/null; cd /home/el5859/deploy && python3 run_lk_prof.py 300'; \
+sudo kill $SP
+
+python3 power_summary.py
+```
+No usar `run_prof.sh` en la Kria 83: llama a `platformstats`, que no está instalado. Se usa `sample_power.sh`.
+
+### F. Bajar resultados (PC)
+```bash
+rsync -avz -e "ssh -J el5859@51.161.8.220:9222" \
+  'el5859@192.168.0.83:~/deploy/*_fpga_v0.csv' \
+  'el5859@192.168.0.83:~/deploy/platformstats_*.txt' \
+  'el5859@192.168.0.83:~/deploy/flow_000001.npy' results/
+```
+
+### Valores esperados
+
+| Métrica | Valor |
+| :--- | :---: |
+| `kernel_ms` | 22.5 ± 0.1 |
+| `fps_kernel` | ~44.4 |
+| `cycles_per_pixel` | ~41.9 (a 142.86 MHz) |
+| `mean_abs_err` | ~0.0016 px |
+| NaN en el flujo | 0 |
+| Potencia reposo / carga | ~3890 / ~4170 mW |
+| Potencia dinámica | ~280-300 mW |
+
+### Problemas comunes
+
+| Síntoma | Causa / solución |
+| :--- | :--- |
+| TIMEOUT o placa congelada | `.bit` y `.hwh` no coinciden: comparar `md5sum` y repetir el `grep` |
+| `Could not find IP lk_hls_v0_0` | Usar `MMIO(0xA0000000, 0x10000)` en lugar de `getattr` |
+| `t.xclbin not found` | Se usó `sudo -E`; usar `sudo bash -c '...'` |
+| `$'\r': command not found` | Repetir el `sed` del paso C |
+| Potencia sin muestras | No corrió `sample_power.sh` o los nombres de archivo no coinciden |
+| `Could not resolve hostname` | El `rsync` se corrió dentro de la Kria; correrlo desde el PC |
+
+### G. Video demostrativo(Prototipo Acelerador II)
+https://github.com/user-attachments/assets/29abb0d5-2d04-459b-95e4-89a06c8dac4c
+
+## 4. Siguientes Pasos
+
+*   **Optimizar el kernel:** cambiar los gradientes completos en URAM por *line buffers* de 7 filas y sumas de ventana incrementales. Con eso baja de ~42 ciclos por píxel hacia 1-2, se libera la URAM y se puede correr a 1024x436 igual que la CPU y la GPU. Solo poner `#pragma HLS PIPELINE` no alcanza, porque Vitis ya pipelinea el lazo interno de la ventana.
+*   **Ancho de bus:** empaquetar píxeles (`ap_uint<128>`) en `m_axi` y usar ráfagas.
+*   **Tipos de datos:** probar punto fijo (`ap_fixed`) en la acumulación para bajar DSP y LUT.
+*   **Host:** bajar `load_ms` decodificando los frames una sola vez o en un hilo en paralelo al kernel.
+*   **Análisis heterogéneo:** ya se hizo la comparación de CPU (NEON), GPU (CUDA shared) y FPGA con el mismo recorte de 320x240 (ver la sección de abajo). Falta sumarle energía por frame de la Jetson cuando se habilite su sensor de potencia.
+
+# Comparación entre plataformas (mismo recorte 320x240)
+
+Para comparar las tres plataformas de forma justa, se corrieron todas las versiones con el **mismo recorte 320x240 de los mismos frames** (`frame_000001/2_320x240_crop.png`), 100 corridas por modo. Se compara el **núcleo puro de Lucas-Kanade** (`lk_compute_ms` en CPU/GPU, `kernel_ms` en la FPGA) y no el tiempo total, porque el pipeline en C agrega un blur gaussiano y un guardado de CSV que el host de la FPGA no ejecuta.
+
+| Placa / modo        | Núcleo LK (ms) | ns/píxel | Total (ms) |
+| :--- | :---: | :---: | :---: |
+| Jetson ARM NEON     | **12.42** | **162** | 238.1 |
+| Jetson CUDA shared  | 20.03 | 261 | 233.4 |
+| Kria ARM NEON       | 21.18 | 276 | 278.8 |
+| FPGA `lk_hls_v0`    | 22.53 | 293 | 46.9 |
+| Jetson scalar       | 26.42 | 344 | 248.5 |
+| Kria scalar         | 32.35 | 421 | 279.4 |
+| Jetson CUDA base    | 128.81 | 1677 | 338.3 |
+
+**Lectura:**
+
+*   La FPGA v0 es **1.44x más rápida que la CPU escalar** de la misma Kria, pero la **NEON de la misma Kria le gana por poco** (21.2 vs 22.5 ms). Esto confirma que v0 está limitada por cómputo serial (~42 ciclos por píxel ≈ 49 iteraciones de la ventana) y deja claro el margen para la versión con *line buffers*.
+*   A este tamaño chico, **la NEON de la Jetson es lo más rápido de todo**. El kernel CUDA shared, que ganaba a 1024x436, aquí pierde contra NEON porque la imagen es pequeña y el costo fijo de lanzar el kernel y copiar (H2D ~3.3 ms, D2H ~6.5 ms) pesa más que el cómputo. El CUDA base además incluye crear el contexto CUDA en cada corrida (sin *warm-up*).
+*   En la FPGA las transferencias son **menos del 1 %** del tiempo porque el host y la FPGA comparten la DDR; en la Jetson sí se paga H2D/D2H. Por eso el `total` de la FPGA (46.9 ms) es mucho menor que el de CPU/GPU, aunque su núcleo no sea el más rápido.
+*   Todos los modos dan el mismo flujo (84.9 % de píxeles con solución), así que la comparación es sobre el mismo resultado numérico.
+
+**Potencia (solo Kria, sensor INA260):** reposo 3886 mW, scalar 4024 mW, NEON 4003 mW, FPGA v0 4166 mW. La Jetson `.182` no expone su sensor de potencia, así que de esa placa no hay energía por frame medida. La potencia de CPU es el promedio de toda la corrida (el núcleo LK es una fracción del tiempo, domina el guardado de CSV), así que subestima la potencia durante el cálculo.
+
 # Artículo científico en construcción
 Lo puede encontrar en Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing
 /Articulo Cientifico/main.pdf
