@@ -409,6 +409,18 @@ Para comparar las tres plataformas de forma justa, se corrieron todas las versio
 
 **Potencia (solo Kria, sensor INA260):** reposo 3886 mW, scalar 4024 mW, NEON 4003 mW, FPGA v0 4166 mW. La Jetson `.182` no expone su sensor de potencia, así que de esa placa no hay energía por frame medida. La potencia de CPU es el promedio de toda la corrida (el núcleo LK es una fracción del tiempo, domina el guardado de CSV), así que subestima la potencia durante el cálculo.
 
+# Declaración de uso de IA
+
+Durante el desarrollo del proyecto se usaron herramientas de inteligencia artificial como apoyo en la programación, la depuración, la generación de scripts de perfilado y la redacción y traducción del artículo y de este README. Las decisiones de diseño, el particionamiento de hardware, la integración y la validación de todos los resultados fueron realizadas por los autores.
+
+Las evidencias de estas consultas están en el repositorio:
+
+*   Etapa FPGA (Acelerador II): `Prototipo_acelerador_II/AWS Quick AI usage.pdf`, registro de uso de IA de Marlon para esta etapa.
+*   `docs/evidencias/Rodrigo interaction log.md` y `docs/evidencias/Marlon_ai_interaction_log.md`, registros del equipo de etapas previas.
+*   Enlaces Microsoft Copilot:
+  https://copilot.cloud.microsoft/chat/share/eyJzaGFyZUlkIjoiNDQyZGY4YzItOWQ0Yi00NzliLTk1ZTQtYzkwZTUzYTVjYmZiIiwiY29udmVyc2F0aW9uSWQiOiI3YTk4MDk3NC03ZjMyLTRhMTctYmRiZC0wODliM2M5Y2Q3Y2IifQ%3D%3D
+*   El artículo incluye además su propio enlace de consulta en la sección *AI Support in Development and Declaration*.
+
 # Artículo científico en construcción
 Lo puede encontrar en Optical-Flow-Project-Course-Introduction-to-Heterogeneous-Computing
 /Articulo Cientifico/main.pdf
